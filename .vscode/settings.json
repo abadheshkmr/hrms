@@ -1,24 +1,17 @@
 {
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.fixAll.eslint": "explicit"
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.tabSize": 2,
-  "editor.rulers": [
-    100
-  ],
+  "editor.rulers": [100],
   "files.eol": "\n",
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
   "typescript.preferences.importModuleSpecifier": "relative",
   "javascript.preferences.importModuleSpecifier": "relative",
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
-  ],
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
@@ -31,13 +24,5 @@
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "cSpell.words": [
-    "nestjs",
-    "typeorm",
-    "postgres",
-    "rabbitmq",
-    "hrms",
-    "saas",
-    "tenants"
-  ]
+  "cSpell.words": ["nestjs", "typeorm", "postgres", "rabbitmq", "hrms", "saas", "tenants"]
 }

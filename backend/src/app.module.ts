@@ -1,14 +1,15 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from './config/config.module';
-import { DatabaseModule } from './database/database.module';
-import { TenantsModule } from './tenants/tenants.module';
-import { TenantMiddleware } from './tenants/tenant.middleware';
-import { EventsModule } from './events/events.module';
+import { ConfigModule } from './core/config/config.module';
+import { DatabaseModule } from './core/database/database.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { TenantMiddleware } from './modules/tenants/tenant.middleware';
+import { EventsModule } from './core/events/events.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, TenantsModule, EventsModule],
+  imports: [ConfigModule, CommonModule, DatabaseModule, TenantsModule, EventsModule],
   controllers: [AppController],
   providers: [AppService],
 })
@@ -18,7 +19,7 @@ export class AppModule implements NestModule {
       .apply(TenantMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.ALL },
-        { path: 'tenants', method: RequestMethod.ALL }
+        { path: 'tenants', method: RequestMethod.ALL },
       )
       .forRoutes('*'); // Apply to all routes except excluded ones
   }

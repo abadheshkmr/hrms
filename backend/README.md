@@ -1,98 +1,90 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Backend Structure
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This backend follows a domain-driven structure designed for scalability and maintainability.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Directory Structure
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+backend/
+├── src/
+│   ├── app.module.ts         # Main application module
+│   ├── main.ts               # Application entry point
+│   ├── common/               # Shared code across all domains
+│   │   ├── constants/        # Application constants
+│   │   ├── decorators/       # Custom decorators
+│   │   ├── dto/              # Shared DTOs
+│   │   ├── entities/         # Base entities
+│   │   ├── exceptions/       # Custom exceptions
+│   │   ├── guards/           # Authentication/authorization guards
+│   │   ├── interceptors/     # Custom interceptors
+│   │   ├── interfaces/       # TypeScript interfaces
+│   │   ├── middleware/       # Custom middleware
+│   │   ├── pipes/            # Custom validation pipes
+│   │   └── utils/            # Utility functions
+│   ├── core/                 # Core infrastructure
+│   │   ├── config/           # Application configuration
+│   │   ├── database/         # Database connection and configuration
+│   │   ├── events/           # Event handling (RabbitMQ)
+│   │   ├── logger/           # Logging functionality
+│   │   └── security/         # Security-related functionality
+│   ├── modules/              # Business domains
+│   │   ├── tenants/          # Multi-tenancy
+│   │   │   ├── dto/          # Tenant-specific DTOs
+│   │   │   ├── entities/     # Tenant entity
+│   │   │   ├── interfaces/   # Tenant-specific interfaces
+│   │   │   ├── tenant.middleware.ts
+│   │   │   ├── tenants.controller.ts
+│   │   │   ├── tenants.module.ts
+│   │   │   └── tenants.service.ts
+│   │   └── [other domains]/  # Other business domains
+│   └── shared/               # Shared business logic
+│       ├── services/         # Shared services
+│       └── modules/          # Shared modules
+└── test/                     # Tests
 ```
 
-## Compile and run the project
+## Key Components
 
-```bash
-# development
-$ npm run start
+### Common
 
-# watch mode
-$ npm run start:dev
+The `common` directory contains code that is shared across the entire application. This includes base entities, utility functions, and other reusable components.
 
-# production mode
-$ npm run start:prod
-```
+### Core
 
-## Run tests
+The `core` directory contains infrastructure-related code that is essential for the application to function but is not directly related to business logic.
 
-```bash
-# unit tests
-$ npm run test
+### Modules
 
-# e2e tests
-$ npm run test:e2e
+The `modules` directory contains business domains, each with its own set of controllers, services, entities, and DTOs. Each module represents a distinct area of functionality in the application.
 
-# test coverage
-$ npm run test:cov
-```
+### Shared
 
-## Deployment
+The `shared` directory contains business logic that is shared between multiple modules.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Multi-Tenancy
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+This application implements a multi-tenant architecture where multiple organizations (tenants) can use the same instance of the application while keeping their data isolated.
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+### Tenant Identification
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Tenants are identified through:
 
-## Resources
+1. Subdomain: tenant1.example.com
+2. Custom header: x-tenant-id
+3. Path parameter: /api/tenants/{tenantId}/resources
 
-Check out a few resources that may come in handy when working with NestJS:
+### Tenant Context
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+The `TenantContextService` provides access to the current tenant's ID throughout the application.
 
-## Support
+## Adding a New Module
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+To add a new module:
 
-## Stay in touch
+1. Create a directory under `modules/`
+2. Create the necessary files (controller, service, entities, DTOs)
+3. Import the module in `app.module.ts`
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Tenant Isolation
 
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+All tenant-specific entities should extend `TenantBaseEntity` from `common/entities/tenant-base.entity.ts`.

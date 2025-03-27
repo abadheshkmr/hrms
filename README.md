@@ -2,6 +2,10 @@
 
 This project is a multi-tenant HRMS (Human Resource Management System) SaaS application built with NestJS (backend), NextJS (frontend), PostgreSQL, Nginx (API Gateway), and RabbitMQ for event-driven architecture.
 
+## Development
+
+Please follow our [Workspace Rules](./WORKSPACE_RULES.md) when contributing to this project.
+
 ## Architecture Overview
 
 The application follows a multi-tenant architecture where multiple organizations (tenants) can use the same instance of the application while keeping their data isolated.

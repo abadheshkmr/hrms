@@ -1,0 +1,7 @@
+export enum ContactType {
+  PRIMARY = 'PRIMARY',
+  SECONDARY = 'SECONDARY',
+  EMERGENCY = 'EMERGENCY',
+  WORK = 'WORK',
+  PERSONAL = 'PERSONAL'
+}

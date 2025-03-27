@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "mikestead.dotenv",
+    "editorconfig.editorconfig",
+    "eamodio.gitlens",
+    "ms-azuretools.vscode-docker",
+    "streetsidesoftware.code-spell-checker",
+    "nrwl.angular-console",
+    "orta.vscode-jest",
+    "davidanson.vscode-markdownlint",
+    "pkief.material-icon-theme",
+    "gruntfuggly.todo-tree",
+    "yzhang.markdown-all-in-one",
+    "ms-vscode.vscode-typescript-next"
+  ]
+}

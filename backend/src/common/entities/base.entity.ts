@@ -1,4 +1,9 @@
-import { PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { 
+  PrimaryGeneratedColumn, 
+  CreateDateColumn, 
+  UpdateDateColumn,
+  Column
+} from 'typeorm';
 
 export abstract class BaseEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -9,4 +14,10 @@ export abstract class BaseEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({ default: false })
+  isDeleted: boolean;
+
+  @Column({ nullable: true })
+  tenantId: string;
 }

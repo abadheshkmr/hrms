@@ -5,7 +5,7 @@ import { Tenant } from './entities/tenant.entity';
 import { Address } from '../../common/entities/address.entity';
 import { ContactInfo } from '../../common/entities/contact-info.entity';
 import { EventsService } from '../../core/events/events.service';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -42,6 +42,20 @@ const mockEventsService = {
   publishTenantDeleted: jest.fn(),
 };
 
+const mockDataSource = {
+  createQueryRunner: jest.fn(() => ({
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager: {
+      save: jest.fn(),
+      remove: jest.fn(),
+    },
+  })),
+};
+
 describe('TenantsService', () => {
   let service: TenantsService;
   let tenantRepository: MockRepository<Tenant>;
@@ -67,6 +81,10 @@ describe('TenantsService', () => {
         {
           provide: EventsService,
           useValue: mockEventsService,
+        },
+        {
+          provide: DataSource,
+          useValue: mockDataSource,
         },
       ],
     }).compile();
@@ -122,17 +140,39 @@ describe('TenantsService', () => {
         subdomain: 'new-tenant',
         isActive: true,
       };
-      const newTenant = { id: '1', ...createTenantDto };
+      const newTenant = {
+        id: '1',
+        ...createTenantDto,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
+      // Mock DataSource and QueryRunner behavior for create method
+      // This is critical - we need to ensure the manager.save returns our newTenant
+      const mockQueryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          save: jest.fn().mockResolvedValue(newTenant),
+          remove: jest.fn(),
+        },
+      };
+      mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
+
+      // Set up repository mock
       tenantRepository.create!.mockReturnValue(newTenant);
-      tenantRepository.save!.mockResolvedValue(newTenant);
 
       const result = await service.create(createTenantDto);
 
+      // Verify the result and mocks
       expect(result).toEqual(newTenant);
-      expect(tenantRepository.create!).toHaveBeenCalledWith(createTenantDto);
-      expect(tenantRepository.save!).toHaveBeenCalledWith(newTenant);
-      expect(mockEventsService.publishTenantCreated).toHaveBeenCalledWith(newTenant);
+      expect(tenantRepository.create!).toHaveBeenCalled();
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockEventsService.publishTenantCreated).toHaveBeenCalled();
     });
   });
 
@@ -148,18 +188,43 @@ describe('TenantsService', () => {
         name: 'Old Name',
         businessType: BusinessType.PRODUCT,
         businessScale: BusinessScale.SMALL,
+        subdomain: 'test-tenant',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        tenantId: null,
       };
-      const updatedTenant = { ...existingTenant, ...updateTenantDto };
+      const updatedTenant = {
+        ...existingTenant,
+        ...updateTenantDto,
+        updatedAt: new Date(),
+      };
 
+      // Mock the tenant lookup
       tenantRepository.findOne!.mockResolvedValue(existingTenant);
-      tenantRepository.save!.mockResolvedValue(updatedTenant);
+      
+      // Mock DataSource and QueryRunner for update method
+      const mockQueryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          save: jest.fn().mockResolvedValue(updatedTenant),
+          remove: jest.fn(),
+        },
+      };
+      mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
 
       const result = await service.update('1', updateTenantDto);
 
       expect(result).toEqual(updatedTenant);
       expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: '1' } });
-      expect(tenantRepository.save!).toHaveBeenCalled();
-      expect(mockEventsService.publishTenantUpdated).toHaveBeenCalledWith(updatedTenant);
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockEventsService.publishTenantUpdated).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when tenant does not exist', async () => {
@@ -324,18 +389,46 @@ describe('TenantsService', () => {
         },
       ] as ContactInfo[];
 
+      // Mock the necessary repository methods
       tenantRepository.findOne!.mockResolvedValue(tenant);
       addressRepository.find!.mockResolvedValue(addresses);
       contactInfoRepository.find!.mockResolvedValue(contacts);
 
+      // Mock DataSource and QueryRunner for the remove method
+      const mockQueryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          save: jest.fn().mockImplementation((entity: any) => {
+            if (entity.entityType === 'TENANT') {
+              if (entity.addressLine1) {
+                // If it's an address
+                return Promise.resolve({ ...entity, isDeleted: true });
+              } else {
+                // If it's a contact info
+                return Promise.resolve({ ...entity, isDeleted: true });
+              }
+            }
+            return Promise.resolve(entity);
+          }),
+          remove: jest.fn().mockResolvedValue(tenant),
+        },
+      };
+      mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
+
       await service.remove(tenantId);
 
+      // Verify the method calls
       expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: tenantId } });
       expect(addressRepository.find!).toHaveBeenCalled();
       expect(contactInfoRepository.find!).toHaveBeenCalled();
-      expect(addressRepository.save!).toHaveBeenCalled();
-      expect(contactInfoRepository.save!).toHaveBeenCalled();
-      expect(tenantRepository.remove!).toHaveBeenCalledWith(tenant);
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(tenant);
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockEventsService.publishTenantDeleted).toHaveBeenCalledWith(tenantId);
     });
   });

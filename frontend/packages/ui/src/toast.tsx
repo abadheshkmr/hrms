@@ -78,7 +78,9 @@ const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
 };
 
 // Toast Viewport Component
-type ToastViewportProps = React.HTMLAttributes<HTMLOListElement>;
+type ToastViewportProps = React.HTMLAttributes<HTMLOListElement> & {
+  className?: string;
+};
 
 const ToastViewport = React.forwardRef<HTMLOListElement, ToastViewportProps>(
   ({ className, ...props }, ref) => {
@@ -177,6 +179,7 @@ Toast.displayName = "Toast";
 // Toast action component
 type ToastActionProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   altText?: string;
+  className?: string;
 };
 
 const ToastAction = React.forwardRef<HTMLButtonElement, ToastActionProps>(
@@ -195,7 +198,9 @@ const ToastAction = React.forwardRef<HTMLButtonElement, ToastActionProps>(
 ToastAction.displayName = "ToastAction";
 
 // Toast close button
-type ToastCloseProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type ToastCloseProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  className?: string;
+};
 
 const ToastClose = React.forwardRef<HTMLButtonElement, ToastCloseProps>(
   ({ className, ...props }, ref) => (
@@ -215,7 +220,9 @@ const ToastClose = React.forwardRef<HTMLButtonElement, ToastCloseProps>(
 ToastClose.displayName = "ToastClose";
 
 // Toast title component
-type ToastTitleProps = React.HTMLAttributes<HTMLDivElement>;
+type ToastTitleProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const ToastTitle = React.forwardRef<HTMLDivElement, ToastTitleProps>(
   ({ className, ...props }, ref) => (
@@ -229,7 +236,9 @@ const ToastTitle = React.forwardRef<HTMLDivElement, ToastTitleProps>(
 ToastTitle.displayName = "ToastTitle";
 
 // Toast description component
-type ToastDescriptionProps = React.HTMLAttributes<HTMLDivElement>;
+type ToastDescriptionProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const ToastDescription = React.forwardRef<HTMLDivElement, ToastDescriptionProps>(
   ({ className, ...props }, ref) => (

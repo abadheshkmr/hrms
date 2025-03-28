@@ -9,6 +9,7 @@ import { cn } from "./utils";
 type CheckboxProps = React.InputHTMLAttributes<HTMLInputElement> & {
   // Define any additional props that were available in the Radix component
   onCheckedChange?: (checked: boolean) => void;
+  className?: string;
 };
 
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(

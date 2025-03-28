@@ -52,7 +52,9 @@ const Dialog: React.FC<DialogProps> = ({
   );
 };
 
-type DialogTriggerProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type DialogTriggerProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  className?: string;
+};
 
 const DialogTrigger = React.forwardRef<HTMLButtonElement, DialogTriggerProps>(
   (props, ref) => {
@@ -82,7 +84,9 @@ const DialogPortal: React.FC<DialogPortalProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-type DialogOverlayProps = React.HTMLAttributes<HTMLDivElement>;
+type DialogOverlayProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
   ({ className, ...props }, ref) => {
@@ -106,7 +110,9 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
 );
 DialogOverlay.displayName = "DialogOverlay";
 
-type DialogCloseProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type DialogCloseProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  className?: string;
+};
 
 const DialogClose = React.forwardRef<HTMLButtonElement, DialogCloseProps>(
   ({ className, ...props }, ref) => {
@@ -124,7 +130,9 @@ const DialogClose = React.forwardRef<HTMLButtonElement, DialogCloseProps>(
 );
 DialogClose.displayName = "DialogClose";
 
-type DialogContentProps = React.HTMLAttributes<HTMLDivElement>;
+type DialogContentProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, ...props }, ref) => {
@@ -158,7 +166,9 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
 );
 DialogContent.displayName = "DialogContent";
 
-type DialogHeaderProps = React.HTMLAttributes<HTMLDivElement>;
+type DialogHeaderProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const DialogHeader: React.FC<DialogHeaderProps> = ({ className, ...props }) => (
   <div
@@ -171,7 +181,9 @@ const DialogHeader: React.FC<DialogHeaderProps> = ({ className, ...props }) => (
 );
 DialogHeader.displayName = "DialogHeader";
 
-type DialogFooterProps = React.HTMLAttributes<HTMLDivElement>;
+type DialogFooterProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const DialogFooter: React.FC<DialogFooterProps> = ({ className, ...props }) => (
   <div
@@ -184,7 +196,9 @@ const DialogFooter: React.FC<DialogFooterProps> = ({ className, ...props }) => (
 );
 DialogFooter.displayName = "DialogFooter";
 
-type DialogTitleProps = React.HTMLAttributes<HTMLHeadingElement>;
+type DialogTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  className?: string;
+};
 
 const DialogTitle = React.forwardRef<HTMLHeadingElement, DialogTitleProps>(
   ({ className, ...props }, ref) => (
@@ -200,7 +214,9 @@ const DialogTitle = React.forwardRef<HTMLHeadingElement, DialogTitleProps>(
 );
 DialogTitle.displayName = "DialogTitle";
 
-type DialogDescriptionProps = React.HTMLAttributes<HTMLParagraphElement>;
+type DialogDescriptionProps = React.HTMLAttributes<HTMLParagraphElement> & {
+  className?: string;
+};
 
 const DialogDescription = React.forwardRef<HTMLParagraphElement, DialogDescriptionProps>(
   ({ className, ...props }, ref) => (

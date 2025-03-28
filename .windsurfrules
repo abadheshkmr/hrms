@@ -1,0 +1,146 @@
+# HRMS SaaS Project Coding Standards
+
+## 1. Project Structure
+
+### Frontend
+
+1. **Pages and Components**
+
+   - Pages in `pages/` directory following Next.js routing conventions
+   - Reusable components in `components/` directory
+   - Shared UI elements in `components/common/`
+   - Feature-specific components in respective feature folders
+
+2. **State Management**
+   - Use React contexts for global state
+   - Prefer local state with hooks for component-specific state
+   - Custom hooks in `hooks/` directory
+
+### Backend (NestJS)
+
+1. **Module Organization**
+
+   - Group by domain (e.g., `users`, `tenants`, `employees`)
+   - Each module has controllers, services, repositories, and DTOs
+   - Common utilities in `common/` directory
+
+2. **Multi-tenant Architecture**
+
+   - Base entities extend `BaseEntity` with optional `tenantId`
+   - Tenant-specific entities extend `TenantBaseEntity` with required `tenantId`
+   - Use repositories extending `TenantAwareRepository` for automatic tenant filtering
+
+3. **File Naming**
+   - NestJS: `kebab-case.type.ts` (e.g., `user.controller.ts`, `tenant.service.ts`)
+   - TypeScript classes: `PascalCase`
+   - TypeScript interfaces: `IPascalCase` (with 'I' prefix)
+
+## 2. Coding Style
+
+1. **TypeScript Patterns**
+
+   - Enable strict mode in `tsconfig.json`
+   - Explicit return types on public methods
+   - Repository methods must always include return types
+   - Use interfaces for DTOs and models
+   - Avoid `any` type except in tests
+
+2. **Method & Function Rules**
+
+   - Functions should be small and focused
+   - Controllers should delegate to services
+   - Business logic belongs in services, not controllers
+   - Repository methods for all database operations
+   - Use async/await for asynchronous code
+
+3. **Error Handling**
+   - Use NestJS exception filters
+   - Custom exceptions should extend built-in exception classes
+   - Service methods should throw appropriate exceptions
+   - Validate inputs with class-validator in DTOs
+
+## 3. Repository Pattern Implementation
+
+1. **Generic Repository**
+
+   - Extend `GenericRepository<T>` for basic CRUD operations
+   - Type safety with proper generics
+   - Use `DeepPartial<T>` for create/update operations
+
+2. **Tenant-Aware Repository**
+
+   - Extend `TenantAwareRepository<T>` for multi-tenant entities
+   - Automatic tenant context for all operations
+   - Optional filtering for cross-tenant operations (admin only)
+
+3. **Query Building**
+   - Use QueryBuilder for complex queries
+   - Repository methods for common query patterns
+   - Pagination utilities for lists
+
+## 4. Testing Standards
+
+1. **Unit Tests**
+
+   - Test files alongside implementation with `.spec.ts` suffix
+   - Mock dependencies with Jest
+   - Test happy path and error conditions
+   - Use descriptive test names (`it should...`)
+
+2. **Service Tests**
+
+   - Mock repositories in service tests
+   - Verify business logic paths
+   - Test transactions and error handling
+
+3. **Repository Tests**
+   - Test with entity manager mocks
+   - Verify correct query construction
+   - Test soft deletes and hard deletes
+
+## 5. Code Review Checklist
+
+1. **Quality Checks**
+
+   - Passes all ESLint rules without disabling needed rules
+   - Includes proper unit tests with good coverage
+   - Uses appropriate patterns for feature implementation
+   - Properly handles multi-tenant context
+
+2. **Performance Considerations**
+
+   - Efficient database queries
+   - Proper use of lazy loading for related entities
+   - Appropriate indexing strategy
+
+3. **Security**
+   - Input validation on all endpoints
+   - Authorization checks for tenant data
+   - No sensitive data leaks
+
+## 6. Commit Guidelines
+
+1. **Conventional Commits**
+
+   - Format: `type(scope): subject`
+   - Types: feat, fix, docs, style, refactor, test, chore
+   - Include ticket number in commit message
+
+2. **Branch Strategy**
+   - Feature branches from develop
+   - Pull requests to develop
+   - Release branches from develop
+   - Hotfixes directly to main/master
+
+## 7. Documentation
+
+1. **Code Documentation**
+
+   - JSDoc/TSDoc for public methods
+   - README for project setup and development workflow
+   - API documentation with Swagger
+
+2. **Architecture Documentation**
+   - Document multi-tenant architecture decisions
+   - Entity relationship diagrams
+   - Service interaction diagrams

@@ -202,7 +202,7 @@ describe('TenantsService', () => {
 
       // Mock the tenant lookup
       tenantRepository.findOne!.mockResolvedValue(existingTenant);
-      
+
       // Mock DataSource and QueryRunner for update method
       const mockQueryRunner = {
         connect: jest.fn(),

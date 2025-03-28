@@ -3,5 +3,5 @@ export enum ContactType {
   SECONDARY = 'SECONDARY',
   EMERGENCY = 'EMERGENCY',
   WORK = 'WORK',
-  PERSONAL = 'PERSONAL'
+  PERSONAL = 'PERSONAL',
 }

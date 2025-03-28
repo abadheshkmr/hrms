@@ -5,5 +5,5 @@ export enum AddressType {
   CORPORATE = 'CORPORATE',
   REGISTERED = 'REGISTERED',
   SHIPPING = 'SHIPPING',
-  BILLING = 'BILLING'
+  BILLING = 'BILLING',
 }

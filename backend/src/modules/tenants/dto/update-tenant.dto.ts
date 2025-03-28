@@ -1,11 +1,4 @@
-import {
-  IsBoolean,
-  IsOptional,
-  IsString,
-  Matches,
-  IsEnum,
-  ValidateNested,
-} from 'class-validator';
+import { IsBoolean, IsOptional, IsString, Matches, IsEnum, ValidateNested } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { AddressDto } from '../../../common/dto/address.dto';

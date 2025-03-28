@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import { Logger } from '@nestjs/common';
 import { TenantContextService } from '../../common/services/tenant-context.service';
+import {
+  TenantCreatedEvent,
+  TenantUpdatedEvent,
+  TenantDeletedEvent,
+} from './interfaces/tenant-event.interface';
 
 @Injectable()
 export class TenantEventsSubscriber {
@@ -14,7 +19,7 @@ export class TenantEventsSubscriber {
     routingKey: 'tenant.created',
     queue: 'tenant-created-handler',
   })
-  handleTenantCreated(msg: any) {
+  handleTenantCreated(msg: TenantCreatedEvent) {
     this.logger.log(`Tenant created event received: ${JSON.stringify(msg)}`);
     // Here you could initialize tenant-specific resources
     // For example:
@@ -33,7 +38,7 @@ export class TenantEventsSubscriber {
     routingKey: 'tenant.updated',
     queue: 'tenant-updated-handler',
   })
-  handleTenantUpdated(msg: any) {
+  handleTenantUpdated(msg: TenantUpdatedEvent) {
     this.logger.log(`Tenant updated event received: ${JSON.stringify(msg)}`);
     // Handle tenant update logic
     // For example:
@@ -51,7 +56,7 @@ export class TenantEventsSubscriber {
     routingKey: 'tenant.deleted',
     queue: 'tenant-deleted-handler',
   })
-  handleTenantDeleted(msg: any) {
+  handleTenantDeleted(msg: TenantDeletedEvent) {
     this.logger.log(`Tenant deleted event received: ${JSON.stringify(msg)}`);
     // Clean up tenant resources
     // For example:

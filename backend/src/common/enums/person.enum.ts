@@ -1,7 +1,7 @@
 export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
-  OTHER = 'OTHER'
+  OTHER = 'OTHER',
 }
 
 export enum MaritalStatus {
@@ -9,5 +9,5 @@ export enum MaritalStatus {
   MARRIED = 'MARRIED',
   DIVORCED = 'DIVORCED',
   WIDOWED = 'WIDOWED',
-  OTHER = 'OTHER'
+  OTHER = 'OTHER',
 }

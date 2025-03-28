@@ -20,6 +20,12 @@ export enum BusinessScale {
 
 @Entity('tenants')
 export class Tenant extends AuditBaseEntity {
+  /**
+   * Override the tenantId from BaseEntity to ensure it's always null for Tenant entities
+   * A tenant doesn't belong to a tenant - it IS a tenant
+   */
+  @Column({ nullable: true, default: null, type: 'varchar' })
+  override tenantId: string | null = null;
   @ApiProperty({
     description: 'The name of the tenant (company or organization)',
     example: 'Acme Corporation',

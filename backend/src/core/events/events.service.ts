@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { TenantData } from '../../common/interfaces/tenant.interface';
 
 @Injectable()
 export class EventsService {
   constructor(private readonly amqpConnection: AmqpConnection) {}
 
-  async publishTenantCreated(tenantData: any): Promise<void> {
+  async publishTenantCreated(tenantData: TenantData): Promise<void> {
     await this.amqpConnection.publish(
       'hrms-events', // exchange
       'tenant.created', // routing key
@@ -16,7 +17,7 @@ export class EventsService {
     );
   }
 
-  async publishTenantUpdated(tenantData: any): Promise<void> {
+  async publishTenantUpdated(tenantData: TenantData): Promise<void> {
     await this.amqpConnection.publish(
       'hrms-events', // exchange
       'tenant.updated', // routing key

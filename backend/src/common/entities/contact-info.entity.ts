@@ -6,30 +6,30 @@ import { ContactType } from '../enums/contact.enum';
 @Index(['entityId', 'entityType', 'tenantId'])
 export class ContactInfo extends BaseEntity {
   @Column({ nullable: true })
-  entityId: string;  // ID of the related entity (employee, tenant, etc.)
-  
+  entityId: string; // ID of the related entity (employee, tenant, etc.)
+
   @Column({ nullable: true })
-  entityType: string;  // Type of the related entity ('EMPLOYEE', 'TENANT', etc.)
-  
+  entityType: string; // Type of the related entity ('EMPLOYEE', 'TENANT', etc.)
+
   @Column({ nullable: true })
   name?: string;
-  
+
   @Column({ nullable: true })
   email?: string;
-  
+
   @Column({ nullable: true })
   phone?: string;
-  
+
   @Column({
     type: 'enum',
     enum: ContactType,
-    default: ContactType.PRIMARY
+    default: ContactType.PRIMARY,
   })
   contactType: ContactType;
-  
+
   @Column({ default: false })
   isPrimary: boolean;
-  
+
   @Column({ nullable: true })
-  relationship?: string;  // For emergency contacts
+  relationship?: string; // For emergency contacts
 }

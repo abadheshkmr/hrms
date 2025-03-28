@@ -44,12 +44,14 @@ services:
       - hrms-network
     command: npm run start:dev
 
-  # NextJS Frontend
-  frontend:
+  # Tenant Management Frontend
+  tenant-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: hrms-frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://nginx:80/api
+    container_name: hrms-tenant-frontend
     restart: unless-stopped
     depends_on:
       - backend
@@ -63,7 +65,30 @@ services:
       - /app/node_modules
     networks:
       - hrms-network
-    command: npm run dev
+    command: npm run --workspace=tenant-management dev
+    
+  # Admin Portal Frontend
+  admin-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://nginx:80/api
+    container_name: hrms-admin-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://nginx:80/api
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - hrms-network
+    command: npm run --workspace=admin-portal dev
 
   # Nginx as API Gateway
   nginx:
@@ -72,7 +97,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-      - frontend
+      - tenant-frontend
+      - admin-frontend
     ports:
       - "80:80"
     volumes:

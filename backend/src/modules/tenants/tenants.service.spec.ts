@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TenantsService } from './tenants.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Tenant } from './entities/tenant.entity';
+import { TenantStatus, VerificationStatus } from './entities/tenant.entity';
 import { Address } from '../../common/entities/address.entity';
 import { ContactInfo } from '../../common/entities/contact-info.entity';
 import { EventsService } from '../../core/events/events.service';
@@ -14,6 +14,7 @@ import { ContactInfoDto } from '../../common/dto/contact-info.dto';
 import { BusinessScale, BusinessType } from './entities/tenant.entity';
 import { AddressType } from '../../common/enums/address.enum';
 import { ContactType } from '../../common/enums/contact.enum';
+import { TenantRepository } from './repositories/tenant.repository';
 
 // Define TenantWithRelations interface for typing
 interface TenantWithRelations {
@@ -23,16 +24,56 @@ interface TenantWithRelations {
   contactInfo: ContactInfo[];
 }
 
-// Properly type MockRepository to work with TypeORM's Repository
-type MockRepository<T extends object = any> = {
-  [K in keyof Repository<T>]?: jest.Mock;
+// Create a mock type for our TenantRepository
+type MockTenantRepository = {
+  find: jest.Mock;
+  findOne: jest.Mock;
+  findById: jest.Mock;
+  findBySubdomain: jest.Mock;
+  findByIdentifier: jest.Mock;
+  findByStatus: jest.Mock;
+  findByVerificationStatus: jest.Mock;
+  searchByName: jest.Mock;
+  create: jest.Mock;
+  save: jest.Mock;
+  update: jest.Mock;
+  setStatus: jest.Mock;
+  setVerificationStatus: jest.Mock;
+  softRemove: jest.Mock;
+  remove: jest.Mock;
 };
 
-const createMockRepository = <T extends object>(): MockRepository<T> => ({
+// Standard repository mocks for Address and ContactInfo
+const createMockRepository = <T extends object>(): Partial<Repository<T>> & {
+  find: jest.Mock;
+  findOne: jest.Mock;
+  create: jest.Mock;
+  save: jest.Mock;
+  remove: jest.Mock;
+} => ({
   find: jest.fn(),
   findOne: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
+  remove: jest.fn(),
+});
+
+// Create a mock for our TenantRepository
+const createMockTenantRepository = (): MockTenantRepository => ({
+  find: jest.fn(),
+  findOne: jest.fn(),
+  findById: jest.fn(),
+  findBySubdomain: jest.fn(),
+  findByIdentifier: jest.fn(),
+  findByStatus: jest.fn(),
+  findByVerificationStatus: jest.fn(),
+  searchByName: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+  update: jest.fn(),
+  setStatus: jest.fn(),
+  setVerificationStatus: jest.fn(),
+  softRemove: jest.fn(),
   remove: jest.fn(),
 });
 
@@ -58,25 +99,25 @@ const mockDataSource = {
 
 describe('TenantsService', () => {
   let service: TenantsService;
-  let tenantRepository: MockRepository<Tenant>;
-  let addressRepository: MockRepository<Address>;
-  let contactInfoRepository: MockRepository<ContactInfo>;
+  let tenantRepository: MockTenantRepository;
+  let addressRepository: ReturnType<typeof createMockRepository<Address>>;
+  let contactInfoRepository: ReturnType<typeof createMockRepository<ContactInfo>>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TenantsService,
         {
-          provide: getRepositoryToken(Tenant),
-          useValue: createMockRepository(),
+          provide: TenantRepository,
+          useValue: createMockTenantRepository(),
         },
         {
           provide: getRepositoryToken(Address),
-          useValue: createMockRepository(),
+          useValue: createMockRepository<Address>(),
         },
         {
           provide: getRepositoryToken(ContactInfo),
-          useValue: createMockRepository(),
+          useValue: createMockRepository<ContactInfo>(),
         },
         {
           provide: EventsService,
@@ -90,11 +131,9 @@ describe('TenantsService', () => {
     }).compile();
 
     service = module.get<TenantsService>(TenantsService);
-    tenantRepository = module.get<MockRepository<Tenant>>(getRepositoryToken(Tenant));
-    addressRepository = module.get<MockRepository<Address>>(getRepositoryToken(Address));
-    contactInfoRepository = module.get<MockRepository<ContactInfo>>(
-      getRepositoryToken(ContactInfo),
-    );
+    tenantRepository = module.get(TenantRepository);
+    addressRepository = module.get(getRepositoryToken(Address));
+    contactInfoRepository = module.get(getRepositoryToken(ContactInfo));
   });
 
   it('should be defined', () => {
@@ -104,11 +143,39 @@ describe('TenantsService', () => {
   describe('findAll', () => {
     it('should return an array of tenants', async () => {
       const expectedTenants = [{ id: '1', name: 'Test Tenant' }];
-      tenantRepository.find!.mockResolvedValue(expectedTenants);
+      tenantRepository.find.mockResolvedValue(expectedTenants);
 
       const result = await service.findAll();
       expect(result).toEqual(expectedTenants);
-      expect(tenantRepository.find).toHaveBeenCalled();
+      expect(tenantRepository.find).toHaveBeenCalledWith({
+        where: { isDeleted: false },
+      });
+    });
+  });
+
+  describe('findByStatus', () => {
+    it('should return tenants with the specified status', async () => {
+      const expectedTenants = [{ id: '1', name: 'Test Tenant', status: TenantStatus.ACTIVE }];
+      tenantRepository.findByStatus.mockResolvedValue(expectedTenants);
+
+      const result = await service.findByStatus(TenantStatus.ACTIVE);
+      expect(result).toEqual(expectedTenants);
+      expect(tenantRepository.findByStatus).toHaveBeenCalledWith(TenantStatus.ACTIVE);
+    });
+  });
+
+  describe('findByVerificationStatus', () => {
+    it('should return tenants with the specified verification status', async () => {
+      const expectedTenants = [
+        { id: '1', name: 'Test Tenant', verificationStatus: VerificationStatus.VERIFIED },
+      ];
+      tenantRepository.findByVerificationStatus.mockResolvedValue(expectedTenants);
+
+      const result = await service.findByVerificationStatus(VerificationStatus.VERIFIED);
+      expect(result).toEqual(expectedTenants);
+      expect(tenantRepository.findByVerificationStatus).toHaveBeenCalledWith(
+        VerificationStatus.VERIFIED,
+      );
     });
   });
 
@@ -118,18 +185,18 @@ describe('TenantsService', () => {
         id: '1',
         name: 'Test Tenant',
       };
-      tenantRepository.findOne!.mockResolvedValue(expectedTenant);
+      tenantRepository.findById.mockResolvedValue(expectedTenant);
 
       const result = await service.findById('1');
       expect(result).toEqual(expectedTenant);
-      expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(tenantRepository.findById).toHaveBeenCalledWith('1');
     });
 
     it('should throw NotFoundException when tenant does not exist', async () => {
-      tenantRepository.findOne!.mockResolvedValue(null);
+      tenantRepository.findById.mockResolvedValue(null);
 
       await expect(service.findById('1')).rejects.toThrow(NotFoundException);
-      expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(tenantRepository.findById).toHaveBeenCalledWith('1');
     });
   });
 
@@ -143,6 +210,8 @@ describe('TenantsService', () => {
       const newTenant = {
         id: '1',
         ...createTenantDto,
+        status: TenantStatus.PENDING,
+        verificationStatus: VerificationStatus.PENDING,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -163,13 +232,13 @@ describe('TenantsService', () => {
       mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
 
       // Set up repository mock
-      tenantRepository.create!.mockReturnValue(newTenant);
+      tenantRepository.create.mockReturnValue(newTenant);
 
       const result = await service.create(createTenantDto);
 
       // Verify the result and mocks
       expect(result).toEqual(newTenant);
-      expect(tenantRepository.create!).toHaveBeenCalled();
+      expect(tenantRepository.create).toHaveBeenCalled();
       expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockEventsService.publishTenantCreated).toHaveBeenCalled();
@@ -201,7 +270,7 @@ describe('TenantsService', () => {
       };
 
       // Mock the tenant lookup
-      tenantRepository.findOne!.mockResolvedValue(existingTenant);
+      tenantRepository.findById.mockResolvedValue(existingTenant);
 
       // Mock DataSource and QueryRunner for update method
       const mockQueryRunner = {
@@ -220,7 +289,7 @@ describe('TenantsService', () => {
       const result = await service.update('1', updateTenantDto);
 
       expect(result).toEqual(updatedTenant);
-      expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(tenantRepository.findById).toHaveBeenCalledWith('1');
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
       expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
@@ -228,7 +297,7 @@ describe('TenantsService', () => {
     });
 
     it('should throw NotFoundException when tenant does not exist', async () => {
-      tenantRepository.findOne!.mockResolvedValue(null);
+      tenantRepository.findById.mockResolvedValue(null);
 
       await expect(service.update('1', { name: 'Updated Tenant' })).rejects.toThrow(
         NotFoundException,
@@ -252,7 +321,7 @@ describe('TenantsService', () => {
       const tenant = {
         id: tenantId,
         name: 'Test Tenant',
-      } as Tenant;
+      };
       const address = {
         id: '1',
         ...addressDto,
@@ -261,21 +330,21 @@ describe('TenantsService', () => {
         tenantId,
       };
 
-      tenantRepository.findOne!.mockResolvedValue(tenant);
-      addressRepository.create!.mockReturnValue(address);
-      addressRepository.save!.mockResolvedValue(address);
+      tenantRepository.findById.mockResolvedValue(tenant);
+      addressRepository.create.mockReturnValue(address);
+      addressRepository.save.mockResolvedValue(address);
 
       const result = await service.addAddressToTenant(tenantId, addressDto);
 
       expect(result).toEqual(address);
-      expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: tenantId } });
-      expect(addressRepository.create!).toHaveBeenCalledWith({
+      expect(tenantRepository.findById).toHaveBeenCalledWith(tenantId);
+      expect(addressRepository.create).toHaveBeenCalledWith({
         ...addressDto,
         entityId: tenantId,
         entityType: 'TENANT',
         tenantId,
       });
-      expect(addressRepository.save!).toHaveBeenCalledWith(address);
+      expect(addressRepository.save).toHaveBeenCalledWith(address);
     });
   });
 
@@ -291,7 +360,7 @@ describe('TenantsService', () => {
       const tenant = {
         id: tenantId,
         name: 'Test Tenant',
-      } as Tenant;
+      };
       const contactInfo = {
         id: '1',
         ...contactInfoDto,
@@ -301,21 +370,21 @@ describe('TenantsService', () => {
         value: 'test@example.com', // For the test expectations that use this field
       };
 
-      tenantRepository.findOne!.mockResolvedValue(tenant);
-      contactInfoRepository.create!.mockReturnValue(contactInfo);
-      contactInfoRepository.save!.mockResolvedValue(contactInfo);
+      tenantRepository.findById.mockResolvedValue(tenant);
+      contactInfoRepository.create.mockReturnValue(contactInfo);
+      contactInfoRepository.save.mockResolvedValue(contactInfo);
 
       const result = await service.addContactInfoToTenant(tenantId, contactInfoDto);
 
       expect(result).toEqual(contactInfo);
-      expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: tenantId } });
-      expect(contactInfoRepository.create!).toHaveBeenCalledWith({
+      expect(tenantRepository.findById).toHaveBeenCalledWith(tenantId);
+      expect(contactInfoRepository.create).toHaveBeenCalledWith({
         ...contactInfoDto,
         entityId: tenantId,
         entityType: 'TENANT',
         tenantId,
       });
-      expect(contactInfoRepository.save!).toHaveBeenCalledWith(contactInfo);
+      expect(contactInfoRepository.save).toHaveBeenCalledWith(contactInfo);
     });
   });
 
@@ -325,15 +394,27 @@ describe('TenantsService', () => {
       const tenant = {
         id: tenantId,
         name: 'Test Tenant',
-      } as Tenant;
+      };
+      // Create mock addresses with required fields for Address type
       const addresses = [
         {
           id: '1',
           addressLine1: '123 Test St',
+          city: 'Test City',
+          state: 'Test State',
+          country: 'Test Country',
+          postalCode: '12345',
+          addressType: AddressType.WORK,
           entityId: tenantId,
           entityType: 'TENANT',
+          isPrimary: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isDeleted: false,
         },
-      ] as Address[];
+      ];
+
+      // Create mock contacts with required fields for ContactInfo type
       const contacts = [
         {
           id: '1',
@@ -341,16 +422,18 @@ describe('TenantsService', () => {
           email: 'test@example.com',
           entityId: tenantId,
           entityType: 'TENANT',
+          isPrimary: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isDeleted: false,
         },
-      ] as ContactInfo[];
+      ];
 
-      tenantRepository.findOne!.mockResolvedValue(tenant);
-      addressRepository.find!.mockResolvedValue(addresses);
-      contactInfoRepository.find!.mockResolvedValue(contacts);
+      tenantRepository.findById.mockResolvedValue(tenant);
+      addressRepository.find.mockResolvedValue(addresses);
+      contactInfoRepository.find.mockResolvedValue(contacts);
 
-      const result = (await service.getTenantWithAddressesAndContacts(
-        tenantId,
-      )) as TenantWithRelations;
+      const result = await service.getTenantWithAddressesAndContacts(tenantId);
 
       const expectedResult: TenantWithRelations = {
         ...tenant,
@@ -368,16 +451,27 @@ describe('TenantsService', () => {
       const tenant = {
         id: tenantId,
         name: 'Test Tenant',
-      } as Tenant;
+      };
+      // Create mock addresses with required fields for Address type
       const addresses = [
         {
           id: '1',
           addressLine1: '123 Test St',
+          city: 'Test City',
+          state: 'Test State',
+          country: 'Test Country',
+          postalCode: '12345',
+          addressType: AddressType.WORK,
           entityId: tenantId,
           entityType: 'TENANT',
+          isPrimary: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           isDeleted: false,
         },
       ];
+
+      // Create mock contacts with required fields for ContactInfo type
       const contacts = [
         {
           id: '1',
@@ -385,14 +479,17 @@ describe('TenantsService', () => {
           email: 'test@example.com',
           entityId: tenantId,
           entityType: 'TENANT',
+          isPrimary: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           isDeleted: false,
         },
-      ] as ContactInfo[];
+      ];
 
       // Mock the necessary repository methods
-      tenantRepository.findOne!.mockResolvedValue(tenant);
-      addressRepository.find!.mockResolvedValue(addresses);
-      contactInfoRepository.find!.mockResolvedValue(contacts);
+      tenantRepository.findById.mockResolvedValue(tenant);
+      addressRepository.find.mockResolvedValue(addresses);
+      contactInfoRepository.find.mockResolvedValue(contacts);
 
       // Mock DataSource and QueryRunner for the remove method
       const mockQueryRunner = {
@@ -402,18 +499,22 @@ describe('TenantsService', () => {
         rollbackTransaction: jest.fn(),
         release: jest.fn(),
         manager: {
-          save: jest.fn().mockImplementation((entity: any) => {
-            if (entity.entityType === 'TENANT') {
-              if (entity.addressLine1) {
-                // If it's an address
-                return Promise.resolve({ ...entity, isDeleted: true });
-              } else {
-                // If it's a contact info
-                return Promise.resolve({ ...entity, isDeleted: true });
-              }
-            }
-            return Promise.resolve(entity);
-          }),
+          save: jest
+            .fn()
+            .mockImplementation(
+              (entity: { entityType?: string; addressLine1?: string; isDeleted?: boolean }) => {
+                if (entity.entityType === 'TENANT') {
+                  if (entity.addressLine1) {
+                    // If it's an address
+                    return Promise.resolve({ ...entity, isDeleted: true });
+                  } else {
+                    // If it's a contact info
+                    return Promise.resolve({ ...entity, isDeleted: true });
+                  }
+                }
+                return Promise.resolve(entity);
+              },
+            ),
           remove: jest.fn().mockResolvedValue(tenant),
         },
       };
@@ -422,9 +523,9 @@ describe('TenantsService', () => {
       await service.remove(tenantId);
 
       // Verify the method calls
-      expect(tenantRepository.findOne!).toHaveBeenCalledWith({ where: { id: tenantId } });
-      expect(addressRepository.find!).toHaveBeenCalled();
-      expect(contactInfoRepository.find!).toHaveBeenCalled();
+      expect(tenantRepository.findById).toHaveBeenCalledWith(tenantId);
+      expect(addressRepository.find).toHaveBeenCalled();
+      expect(contactInfoRepository.find).toHaveBeenCalled();
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
       expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(tenant);
       expect(mockQueryRunner.startTransaction).toHaveBeenCalled();

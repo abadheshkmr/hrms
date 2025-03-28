@@ -16,6 +16,7 @@ These components represent the foundation for standardizing data across the appl
 ## Implementation Steps
 
 ### Step 1: Create Feature Branch
+
 ```bash
 git checkout -b feature/common-entities
 ```
@@ -23,6 +24,7 @@ git checkout -b feature/common-entities
 ### Step 2: Create Base Entities
 
 1. Create `/backend/src/common/entities/base.entity.ts`
+
    ```typescript
    import { 
      BaseEntity,
@@ -51,6 +53,7 @@ git checkout -b feature/common-entities
    ```
 
 2. Create `/backend/src/common/entities/audit-base.entity.ts` (simplified version)
+
    ```typescript
    import { 
      Column,
@@ -71,6 +74,7 @@ git checkout -b feature/common-entities
    ```
 
 3. Test the base entities:
+
    ```bash
    npm run test -- --testPathPattern=common
    ```
@@ -78,6 +82,7 @@ git checkout -b feature/common-entities
 ### Step 3: Create Common Enumerations
 
 1. Create `/backend/src/common/enums/address.enum.ts`
+
    ```typescript
    export enum AddressType {
      PERMANENT = 'PERMANENT',
@@ -91,6 +96,7 @@ git checkout -b feature/common-entities
    ```
 
 2. Create `/backend/src/common/enums/contact.enum.ts`
+
    ```typescript
    export enum ContactType {
      PRIMARY = 'PRIMARY',
@@ -102,6 +108,7 @@ git checkout -b feature/common-entities
    ```
 
 3. Create `/backend/src/common/enums/person.enum.ts`
+
    ```typescript
    export enum Gender {
      MALE = 'MALE',
@@ -121,6 +128,7 @@ git checkout -b feature/common-entities
 ### Step 4: Create Address Entity
 
 1. Create `/backend/src/common/entities/address.entity.ts`
+
    ```typescript
    import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
    import { EntityBase } from './base.entity';
@@ -174,11 +182,13 @@ git checkout -b feature/common-entities
    ```
 
 2. Create simple DTO for Address:
+
    ```bash
    mkdir -p /backend/src/common/dto
    ```
 
 3. Create `/backend/src/common/dto/address.dto.ts`
+
    ```typescript
    import { IsNotEmpty, IsString, IsOptional, IsEnum, IsBoolean, IsNumber } from 'class-validator';
    import { AddressType } from '../enums/address.enum';
@@ -229,6 +239,7 @@ git checkout -b feature/common-entities
    ```
 
 4. Test the Address entity:
+
    ```bash
    npm run test -- --testPathPattern=address
    ```
@@ -236,6 +247,7 @@ git checkout -b feature/common-entities
 ### Step 5: Create Contact Information Entity
 
 1. Create `/backend/src/common/entities/contact-info.entity.ts`
+
    ```typescript
    import { Entity, Column } from 'typeorm';
    import { EntityBase } from './base.entity';
@@ -274,11 +286,13 @@ git checkout -b feature/common-entities
    ```
 
 2. Create simple DTO for ContactInfo:
+
    ```bash
    mkdir -p /backend/src/common/dto
    ```
 
 3. Create `/backend/src/common/dto/contact-info.dto.ts`
+
    ```typescript
    import { IsNotEmpty, IsString, IsOptional, IsEnum, IsBoolean, IsEmail } from 'class-validator';
    import { ContactType } from '../enums/contact.enum';
@@ -309,6 +323,7 @@ git checkout -b feature/common-entities
    ```
 
 4. Test the ContactInfo entity:
+
    ```bash
    npm run test -- --testPathPattern=contact
    ```
@@ -316,11 +331,13 @@ git checkout -b feature/common-entities
 ### Step 6: Build and Deploy
 
 1. Build the application:
+
    ```bash
    npm run build
    ```
 
 2. Deploy with Docker:
+
    ```bash
    docker-compose up -d --build
    ```
@@ -329,7 +346,7 @@ git checkout -b feature/common-entities
 
 The following components will be implemented in future phases:
 
-1. **Banking Information Entity**: 
+1. **Banking Information Entity**:
    - Complete implementation of bank account data structure
    - Validation rules for banking data
 

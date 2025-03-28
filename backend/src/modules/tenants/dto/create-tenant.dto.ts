@@ -6,6 +6,12 @@ import {
   IsOptional,
   ValidateNested,
   IsBoolean,
+  IsEmail,
+  IsUrl,
+  IsDateString,
+  IsInt,
+  Min,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -84,6 +90,83 @@ export class CreateTenantDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({
+    description: 'Primary email address for the tenant',
+    example: 'info@acmecorp.com',
+  })
+  @IsOptional()
+  @IsEmail()
+  primaryEmail?: string;
+
+  @ApiProperty({
+    description: 'Primary phone number for the tenant',
+    example: '+1234567890',
+  })
+  @IsOptional()
+  @IsString()
+  primaryPhone?: string;
+
+  @ApiProperty({
+    description: 'Website URL of the organization',
+    example: 'https://www.acmecorp.com',
+  })
+  @IsOptional()
+  @IsUrl()
+  website?: string;
+
+  @ApiProperty({
+    description: 'Unique identifier for the tenant (used in URLs and references)',
+    example: 'acme-corp',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'Identifier can only contain lowercase letters, numbers, and hyphens',
+  })
+  identifier?: string;
+
+  @ApiProperty({
+    description: 'Date when the business was founded',
+    example: '2010-01-15',
+  })
+  @IsOptional()
+  @IsDateString()
+  foundedDate?: string;
+
+  @ApiProperty({
+    description: 'Brief description of the tenant organization',
+    example: 'Leading provider of cloud solutions for businesses',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @ApiProperty({
+    description: 'Tax deduction account number',
+    example: 'ABCD12345E',
+  })
+  @IsOptional()
+  @IsString()
+  tanNumber?: string;
+
+  @ApiProperty({
+    description: 'Micro, small, and medium enterprises registration number',
+    example: 'UDYAM-XX-XX-0000000',
+  })
+  @IsOptional()
+  @IsString()
+  msmeNumber?: string;
+
+  @ApiProperty({
+    description: 'Number of employees in the organization',
+    example: 250,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  employeeCount?: number;
 
   @ApiProperty({
     description: 'Address information for the tenant',

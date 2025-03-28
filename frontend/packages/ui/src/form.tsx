@@ -116,10 +116,12 @@ const FormItem = React.forwardRef<
 FormItem.displayName = "FormItem";
 
 // Use a simple HTML label instead of the Label component to avoid type issues
-const FormLabel = React.forwardRef<
-  HTMLLabelElement,
-  React.LabelHTMLAttributes<HTMLLabelElement>
->(({ className, ...props }, ref) => {
+type FormLabelProps = React.LabelHTMLAttributes<HTMLLabelElement> & {
+  className?: string;
+};
+
+const FormLabel = React.forwardRef<HTMLLabelElement, FormLabelProps>
+(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField();
 
   return (

@@ -1,0 +1,34 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "enabledLanguageIds": ["*"],
+  "ignorePaths": [
+    "frontend/Dockerfile",
+    "**/*.json",
+    "**/mcp_settings.json",
+    "**/rooveterinaryinc.roo-cline/settings/**",
+    "backend/docs/IMPLEMENTATION-PLAN.md",
+    "docker-compose*.yml",
+    ".spellcheckignore",
+    "node_modules/**",
+    "dist/**",
+    "build/**"
+  ],
+  "ignoreWords": [
+    "Turborepo",
+    "nextjs",
+    "adduser",
+    "addgroup",
+    "akmrjha",
+    "modelcontextprotocol",
+    "AMQP",
+    "amqp",
+    "golevelup",
+    "AAPFU",
+    "Aadhar",
+    "Hotfixes",
+    "rooveterinaryinc",
+    "roo-cline"
+  ],
+  "useGitignore": true
+}

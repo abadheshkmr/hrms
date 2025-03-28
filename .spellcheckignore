@@ -1,0 +1,8 @@
+# Spell checker ignore file
+# Add files and directories to ignore in spell checking
+
+# Configuration files
+/Users/akmrjha/Library/Application Support/Windsurf/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json
+
+# Build files
+frontend/Dockerfile

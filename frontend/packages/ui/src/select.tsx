@@ -94,6 +94,7 @@ const Select: React.FC<SelectProps> = ({
 // Group component for organizing items
 type SelectGroupProps = React.HTMLAttributes<HTMLDivElement> & {
   children?: React.ReactNode;
+  className?: string;
 };
 
 const SelectGroup = React.forwardRef<HTMLDivElement, SelectGroupProps>(
@@ -114,17 +115,19 @@ SelectGroup.displayName = "SelectGroup";
 type SelectValueProps = {
   placeholder?: string;
   children?: React.ReactNode;
+  className?: string;
 };
 
-const SelectValue: React.FC<SelectValueProps> = ({ placeholder = "Select an option" }) => {
+const SelectValue: React.FC<SelectValueProps> = ({ placeholder = "Select an option", className }) => {
   const { value } = useSelectContext();
-  return <span>{value || placeholder}</span>;
+  return <span className={className}>{value || placeholder}</span>;
 };
 SelectValue.displayName = "SelectValue";
 
 // Trigger component (button that opens the select)
 type SelectTriggerProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   children?: React.ReactNode;
+  className?: string;
 };
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
@@ -155,7 +158,9 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
 SelectTrigger.displayName = "SelectTrigger";
 
 // Scroll button components
-type ScrollButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type ScrollButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  className?: string;
+};
 
 const SelectScrollUpButton = React.forwardRef<HTMLButtonElement, ScrollButtonProps>(
   ({ className, ...props }, ref) => (
@@ -192,6 +197,7 @@ SelectScrollDownButton.displayName = "SelectScrollDownButton";
 // Content component (the dropdown that appears)
 type SelectContentProps = React.HTMLAttributes<HTMLDivElement> & {
   position?: "item-aligned" | "popper";
+  className?: string;
 };
 
 const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps>(
@@ -232,7 +238,9 @@ const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps>(
 SelectContent.displayName = "SelectContent";
 
 // Label component
-type SelectLabelProps = React.LabelHTMLAttributes<HTMLLabelElement>;
+type SelectLabelProps = React.LabelHTMLAttributes<HTMLLabelElement> & {
+  className?: string;
+};
 
 const SelectLabel = React.forwardRef<HTMLLabelElement, SelectLabelProps>
   (({ className, ...props }, ref) => (
@@ -288,7 +296,9 @@ const SelectItem = React.forwardRef<HTMLLIElement, SelectItemProps>(
 SelectItem.displayName = "SelectItem";
 
 // Separator component
-type SelectSeparatorProps = React.HTMLAttributes<HTMLDivElement>;
+type SelectSeparatorProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 const SelectSeparator = React.forwardRef<HTMLDivElement, SelectSeparatorProps>(
   ({ className, ...props }, ref) => (

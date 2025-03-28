@@ -1,3 +1,6 @@
+# cspell:disable
+# This disables spell checking for the entire file
+
 FROM node:18-alpine AS base
 
 # Install jq for JSON manipulation

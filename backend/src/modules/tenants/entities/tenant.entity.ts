@@ -18,6 +18,20 @@ export enum BusinessScale {
   ENTERPRISE = 'ENTERPRISE',
 }
 
+export enum TenantStatus {
+  ACTIVE = 'ACTIVE',
+  PENDING = 'PENDING',
+  SUSPENDED = 'SUSPENDED',
+  TERMINATED = 'TERMINATED',
+}
+
+export enum VerificationStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED',
+}
+
 @Entity('tenants')
 export class Tenant extends AuditBaseEntity {
   /**
@@ -106,6 +120,114 @@ export class Tenant extends AuditBaseEntity {
   })
   @Column({ default: true })
   isActive: boolean;
+
+  @ApiProperty({
+    description: 'The tenant status in the system lifecycle',
+    enum: TenantStatus,
+    example: TenantStatus.ACTIVE,
+  })
+  @Column({
+    type: 'enum',
+    enum: TenantStatus,
+    default: TenantStatus.PENDING,
+  })
+  status: TenantStatus;
+
+  @ApiProperty({
+    description: 'The verification status of the tenant',
+    enum: VerificationStatus,
+    example: VerificationStatus.VERIFIED,
+  })
+  @Column({
+    type: 'enum',
+    enum: VerificationStatus,
+    default: VerificationStatus.PENDING,
+  })
+  verificationStatus: VerificationStatus;
+
+  @ApiProperty({
+    description: 'Website URL of the organization',
+    example: 'https://www.acmecorp.com',
+  })
+  @Column({ nullable: true })
+  website: string;
+
+  @ApiProperty({
+    description: 'Primary email address for the tenant',
+    example: 'info@acmecorp.com',
+  })
+  @Column({ nullable: true })
+  primaryEmail: string;
+
+  @ApiProperty({
+    description: 'Primary phone number for the tenant',
+    example: '+1234567890',
+  })
+  @Column({ nullable: true })
+  primaryPhone: string;
+
+  @ApiProperty({
+    description: 'Unique identifier for the tenant (used in URLs and references)',
+    example: 'acme-corp',
+  })
+  @Column({ nullable: true, unique: true })
+  identifier: string;
+
+  @ApiProperty({
+    description: 'Date when the business was founded',
+    example: '2010-01-15',
+  })
+  @Column({ nullable: true, type: 'date' })
+  foundedDate: Date;
+
+  @ApiProperty({
+    description: 'Tax deduction account number',
+    example: 'ABCD12345E',
+  })
+  @Column({ nullable: true })
+  tanNumber: string;
+
+  @ApiProperty({
+    description: 'Micro, small, and medium enterprises registration number',
+    example: 'UDYAM-XX-XX-0000000',
+  })
+  @Column({ nullable: true })
+  msmeNumber: string;
+
+  @ApiProperty({
+    description: 'Brief description of the tenant organization',
+    example: 'Leading provider of cloud solutions for businesses',
+  })
+  @Column({ nullable: true, type: 'text' })
+  description: string;
+
+  @ApiProperty({
+    description: 'Number of employees in the organization',
+    example: 250,
+  })
+  @Column({ nullable: true, type: 'int' })
+  employeeCount: number;
+
+  @ApiProperty({
+    description: 'Date when verification was completed',
+    example: '2023-05-20T14:30:00Z',
+  })
+  @Column({ nullable: true })
+  verificationDate: Date;
+
+  @ApiProperty({
+    description: 'User ID who verified the tenant',
+    example: '5f8d2f3b-c6e5-4d7a-8f1d-9c5a3e5d6b4d',
+  })
+  @Column({ nullable: true })
+  verifiedById: string;
+
+  @ApiProperty({
+    description: 'Notes added during the verification process',
+    example: 'All documents verified. Business registration confirmed with authorities.',
+  })
+  @Column({ nullable: true, type: 'text' })
+  verificationNotes: string;
 
   // Note: Instead of embedding address and contact info directly,
   // we use the relationship with our standardized entities

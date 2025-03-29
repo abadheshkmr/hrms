@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, TestingModule } from '@nestjs/testing';
 import { CallHandler, ExecutionContext, HttpStatus } from '@nestjs/common';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { TenantInterceptor } from './tenant.interceptor';
 import { TenantContextService } from '../services/tenant-context.service';
 import { Reflector } from '@nestjs/core';
-// import { TENANT_OPTIONAL } from '../guards/tenant-auth.guard';
 import { MissingTenantContextException } from '../exceptions/tenant-exceptions';
 
 describe('TenantInterceptor', () => {
@@ -13,36 +13,70 @@ describe('TenantInterceptor', () => {
   let reflector: jest.Mocked<Reflector>;
 
   const TEST_TENANT_ID = 'test-tenant-id';
-  
-  const mockExecutionContext = (): Record<string, unknown> => {
-    const mockResponse = {
+
+  interface MockResponse {
+    setHeader: jest.Mock;
+  }
+
+  interface HttpContext {
+    getRequest(): Record<string, unknown>;
+    getResponse(): MockResponse;
+  }
+
+  interface HttpError extends Error {
+    response: { tenantId?: string };
+    status: HttpStatus;
+  }
+
+  // Factory function for mocking ExecutionContext for tests
+  const mockExecutionContext = (): ExecutionContext => {
+    const mockResponse: MockResponse = {
       setHeader: jest.fn(),
     };
-    
-    return {
-      switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn(),
-        getResponse: jest.fn().mockReturnValue(mockResponse),
-      }),
+
+    const mockExecutionContext: ExecutionContext = {
+      switchToHttp: jest.fn().mockImplementation(
+        (): HttpContext => ({
+          getRequest: jest.fn().mockReturnValue({}),
+          getResponse: jest.fn().mockReturnValue(mockResponse),
+        }),
+      ),
       getHandler: jest.fn(),
-    } as unknown as ExecutionContext;
+      getClass: jest.fn(),
+      getType: jest.fn().mockReturnValue('http'),
+      getArgs: jest.fn().mockReturnValue([]),
+      getArgByIndex: jest.fn().mockReturnValue(null),
+      switchToRpc: jest.fn().mockReturnValue({}),
+      switchToWs: jest.fn().mockReturnValue({}),
+    };
+
+    return mockExecutionContext;
   };
 
-  const mockCallHandler = (responseData?: unknown) => {
+  const mockCallHandler = (responseData?: unknown): CallHandler => {
     return {
-      handle: jest.fn(() => {
-        return responseData ? of(responseData) : of({});
-      }),
-    } as CallHandler;
+      // Use a type assertion for the entire Jest mock function to avoid 'any' returns
+      handle: jest.fn().mockImplementation((): Observable<Record<string, unknown>> => {
+        // Use type assertions to ensure return type safety
+        return responseData
+          ? of(responseData as Record<string, unknown>)
+          : of({} as Record<string, unknown>);
+      }) as jest.Mock<Observable<Record<string, unknown>>, []>,
+    };
   };
 
-  const mockErrorCallHandler = (error: Error) => {
+  const mockErrorCallHandler = (error: HttpError): CallHandler => {
     return {
-      handle: jest.fn(() => throwError(() => error)),
-    } as CallHandler;
+      // Use a type assertion for the entire Jest mock function to avoid 'any' returns
+      handle: jest.fn().mockImplementation((): Observable<never> => {
+        return throwError((): HttpError => error);
+      }) as jest.Mock<Observable<never>, []>,
+    };
   };
 
   beforeEach(async () => {
+    // Clear all mocks before each test
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TenantInterceptor,
@@ -76,19 +110,18 @@ describe('TenantInterceptor', () => {
       const context = mockExecutionContext();
       const handler = mockCallHandler();
       tenantContextService.getCurrentTenantId.mockReturnValue(TEST_TENANT_ID);
-      
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: () => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (): void => {
           // Assert
-          const response = context.switchToHttp().getResponse();
-          expect(response.setHeader).toHaveBeenCalledWith(
-            'X-Tenant-ID',
-            TEST_TENANT_ID
-          );
+          const http = context.switchToHttp() as unknown as HttpContext;
+          const response = http.getResponse();
+          expect(response.setHeader).toHaveBeenCalledWith('X-Tenant-ID', TEST_TENANT_ID);
           done();
         },
-        error: done.fail,
+        error: (err: Error): void => done.fail(err.message),
       });
     });
 
@@ -98,16 +131,19 @@ describe('TenantInterceptor', () => {
       const handler = mockCallHandler();
       tenantContextService.getCurrentTenantId.mockReturnValue(null);
       reflector.get.mockReturnValue(true); // TenantOptional = true
-      
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: () => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (): void => {
           // Assert
-          const response = context.switchToHttp().getResponse();
+          // Use type casting with unknown intermediate to ensure type safety
+          const http = context.switchToHttp() as unknown as HttpContext;
+          const response = http.getResponse();
           expect(response.setHeader).not.toHaveBeenCalled();
           done();
         },
-        error: done.fail,
+        error: (err: Error): void => done.fail(err.message),
       });
     });
 
@@ -117,11 +153,12 @@ describe('TenantInterceptor', () => {
       const handler = mockCallHandler();
       tenantContextService.getCurrentTenantId.mockReturnValue(null);
       reflector.get.mockReturnValue(false); // TenantOptional = false
-      
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: () => done.fail('Should have thrown an error'),
-        error: (error) => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (): void => done.fail('Should have thrown an error'),
+        error: (error: unknown): void => {
           // Assert
           expect(error).toBeInstanceOf(MissingTenantContextException);
           done();
@@ -135,10 +172,11 @@ describe('TenantInterceptor', () => {
       const responseData = { id: 1, name: 'Test Entity' };
       const handler = mockCallHandler(responseData);
       tenantContextService.getCurrentTenantId.mockReturnValue(TEST_TENANT_ID);
-      
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: (result) => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (result: Record<string, unknown>): void => {
           // Assert
           // Check if _tenantInfo property was added
           // We can't directly access it since it's non-enumerable
@@ -148,25 +186,33 @@ describe('TenantInterceptor', () => {
           });
           done();
         },
-        error: done.fail,
+        error: (err: Error): void => done.fail(err.message),
       });
     });
 
     it('should add tenant info to error responses', (done): void => {
       // Arrange
       const context = mockExecutionContext();
-      const error = new Error('Test error');
-      (error as any).response = {}; // Add response property to simulate HTTP exception
-      (error as any).status = HttpStatus.BAD_REQUEST;
+
+      const error: HttpError = Object.assign(new Error('Test error'), {
+        response: {},
+        status: HttpStatus.BAD_REQUEST,
+      });
       const handler = mockErrorCallHandler(error);
       tenantContextService.getCurrentTenantId.mockReturnValue(TEST_TENANT_ID);
-      
+
+      // Prevent console.error from actually logging during tests
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation((): void => {});
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: () => done.fail('Should have thrown an error'),
-        error: (caughtError) => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (): void => done.fail('Should have thrown an error'),
+        error: (caughtError: HttpError): void => {
           // Assert
-          expect((caughtError as any).response.tenantId).toBe(TEST_TENANT_ID);
+          expect(caughtError.response.tenantId).toBe(TEST_TENANT_ID);
+          // Clean up the mock
+          consoleSpy.mockRestore();
           done();
         },
       });
@@ -175,23 +221,28 @@ describe('TenantInterceptor', () => {
     it('should log non-404 errors', (done): void => {
       // Arrange
       const context = mockExecutionContext();
-      const error = new Error('Test error');
-      (error as any).status = HttpStatus.BAD_REQUEST;
-      (error as any).message = 'Test error message';
+
+      const error: HttpError = Object.assign(new Error('Test error message'), {
+        response: {},
+        status: HttpStatus.BAD_REQUEST,
+      });
       const handler = mockErrorCallHandler(error);
       tenantContextService.getCurrentTenantId.mockReturnValue(TEST_TENANT_ID);
-      
+
       // Spy on console.error
-      jest.spyOn(console, 'error').mockImplementation((): void => {});
-      
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation((): void => {});
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: () => done.fail('Should have thrown an error'),
-        error: () => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (): void => done.fail('Should have thrown an error'),
+        error: (/* err */): void => {
           // Assert
-          expect(console.error).toHaveBeenCalledWith(
-            `Tenant error [${TEST_TENANT_ID}]:`, 'Test error message'
+          expect(consoleSpy).toHaveBeenCalledWith(
+            `Tenant error [${TEST_TENANT_ID}]:`,
+            'Test error message',
           );
+          consoleSpy.mockRestore();
           done();
         },
       });
@@ -200,20 +251,28 @@ describe('TenantInterceptor', () => {
     it('should not log 404 errors', (done): void => {
       // Arrange
       const context = mockExecutionContext();
-      const error = new Error('Not Found');
-      (error as any).status = HttpStatus.NOT_FOUND;
+
+      // Reset any previous mocks
+      jest.clearAllMocks();
+
+      const error: HttpError = Object.assign(new Error('Not Found'), {
+        response: {},
+        status: HttpStatus.NOT_FOUND,
+      });
       const handler = mockErrorCallHandler(error);
       tenantContextService.getCurrentTenantId.mockReturnValue(TEST_TENANT_ID);
-      
+
       // Spy on console.error
-      jest.spyOn(console, 'error').mockImplementation((): void => {});
-      
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation((): void => {});
+
       // Act
-      interceptor.intercept(context, handler).subscribe({
-        next: () => done.fail('Should have thrown an error'),
-        error: () => {
+      const observable = interceptor.intercept(context, handler);
+      observable.subscribe({
+        next: (): void => done.fail('Should have thrown an error'),
+        error: (/* err */): void => {
           // Assert
-          expect(console.error).not.toHaveBeenCalled();
+          expect(consoleSpy).not.toHaveBeenCalled();
+          consoleSpy.mockRestore();
           done();
         },
       });

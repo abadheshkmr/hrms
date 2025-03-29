@@ -59,8 +59,7 @@ export class TenantValidationService {
     try {
       await this.tenantsService.findById(currentTenantId);
       return true;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err) {
+    } catch {
       throw new TenantNotFoundException(currentTenantId);
     }
   }

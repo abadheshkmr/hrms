@@ -3,7 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { AddressDto } from '../../../common/dto/address.dto';
 import { ContactInfoDto } from '../../../common/dto/contact-info.dto';
-import { BusinessType, BusinessScale } from '../entities/tenant.entity';
+import { BusinessType, BusinessScale } from '../enums/tenant.enums';
 
 export class UpdateTenantDto {
   @ApiPropertyOptional({

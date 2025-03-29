@@ -10,7 +10,6 @@ import { z } from "zod";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { Textarea } from "@repo/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/select";
 import {
   Form,
   FormControl,
@@ -51,7 +50,7 @@ export default function EditTenantPage({ params }: EditTenantPageProps) {
     const fetchTenant = async () => {
       try {
         const data = await tenantApi.getTenantById(params.id);
-        
+
         // Reset form with tenant data
         form.reset({
           name: data.name,

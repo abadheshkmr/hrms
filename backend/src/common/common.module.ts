@@ -2,6 +2,7 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantContextService } from '../modules/tenants/services/tenant-context.service';
 import { RepositoryFactory } from './services/repository.factory';
+import { ExceptionFiltersModule } from './filters/exception-filters.module';
 
 @Module({
   providers: [TenantContextService, RepositoryFactory],
@@ -16,7 +17,7 @@ export class CommonModule {
     return {
       global: true,
       module: CommonModule,
-      imports: [],
+      imports: [ExceptionFiltersModule],
       providers: [TenantContextService, RepositoryFactory],
       exports: [TenantContextService, RepositoryFactory],
     };

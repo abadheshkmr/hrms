@@ -1,7 +1,8 @@
 import { EntityManager, FindOptionsWhere, Like, Raw } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { GenericRepository } from '../../../common/repositories/generic.repository';
-import { Tenant, TenantStatus, VerificationStatus, BusinessType } from '../entities/tenant.entity';
+import { Tenant } from '../entities/tenant.entity';
+import { TenantStatus, VerificationStatus, BusinessType } from '../enums/tenant.enums';
 
 /**
  * Repository for Tenant entity operations
@@ -53,7 +54,10 @@ export class TenantRepository extends GenericRepository<Tenant> {
    */
   async findByVerificationStatus(verificationStatus: VerificationStatus): Promise<Tenant[]> {
     return this.find({
-      where: { verificationStatus, isDeleted: false },
+      where: {
+        verification: { verificationStatus },
+        isDeleted: false,
+      },
     });
   }
 
@@ -92,7 +96,7 @@ export class TenantRepository extends GenericRepository<Tenant> {
     }
 
     if (options.industry) {
-      whereOptions.industry = Like(`%${options.industry}%`);
+      whereOptions['business.industry'] = Like(`%${options.industry}%`);
     }
 
     if (options.status) {
@@ -100,21 +104,21 @@ export class TenantRepository extends GenericRepository<Tenant> {
     }
 
     if (options.verificationStatus) {
-      whereOptions.verificationStatus = options.verificationStatus;
+      whereOptions['verification.verificationStatus'] = options.verificationStatus;
     }
 
     if (options.businessType) {
-      whereOptions.businessType = options.businessType as BusinessType;
+      whereOptions['business.businessType'] = options.businessType as BusinessType;
     }
 
     if (options.foundedAfter) {
-      whereOptions.foundedDate = Raw((alias) => `${alias} >= :foundedAfter`, {
+      whereOptions['business.foundedDate'] = Raw((alias) => `${alias} >= :foundedAfter`, {
         foundedAfter: options.foundedAfter,
       });
     }
 
     if (options.foundedBefore) {
-      whereOptions.foundedDate = Raw((alias) => `${alias} <= :foundedBefore`, {
+      whereOptions['business.foundedDate'] = Raw((alias) => `${alias} <= :foundedBefore`, {
         foundedBefore: options.foundedBefore,
       });
     }
@@ -170,15 +174,23 @@ export class TenantRepository extends GenericRepository<Tenant> {
       return null;
     }
 
-    tenant.verificationStatus = verificationStatus;
-    tenant.verifiedById = verifiedById;
+    // Initialize verification property if not exists
+    if (!tenant.verification) {
+      tenant.verification = {
+        verificationStatus: VerificationStatus.PENDING,
+      };
+    }
+
+    // Update verification information
+    tenant.verification.verificationStatus = verificationStatus;
+    tenant.verification.verifiedById = verifiedById;
 
     if (verificationStatus === VerificationStatus.VERIFIED) {
-      tenant.verificationDate = new Date();
+      tenant.verification.verificationDate = new Date();
     }
 
     if (verificationNotes) {
-      tenant.verificationNotes = verificationNotes;
+      tenant.verification.verificationNotes = verificationNotes;
     }
     return this.repository.save(tenant);
   }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TenantsService } from './tenants.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { TenantStatus, VerificationStatus } from '../entities/tenant.entity';
+import { TenantStatus, VerificationStatus } from '../enums/tenant.enums';
 import { Address } from '../../../common/entities/address.entity';
 import { ContactInfo } from '../../../common/entities/contact-info.entity';
 import { EventsService } from '../../../core/events/events.service';
@@ -207,7 +207,9 @@ describe('TenantsService', () => {
         id: '1',
         ...createTenantDto,
         status: TenantStatus.PENDING,
-        verificationStatus: VerificationStatus.PENDING,
+        verification: {
+          verificationStatus: VerificationStatus.PENDING,
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -235,7 +237,9 @@ describe('TenantsService', () => {
       expect(tenantRepository.create).toHaveBeenCalledWith({
         ...createTenantDto,
         status: TenantStatus.PENDING,
-        verificationStatus: VerificationStatus.PENDING,
+        verification: {
+          verificationStatus: VerificationStatus.PENDING,
+        },
         isActive: true,
         tenantId: null,
       });
@@ -335,7 +339,14 @@ describe('TenantsService', () => {
         country: 'USA',
         isPrimary: true,
       };
-      const tenant = { id: tenantId, name: 'Test Tenant' };
+      const tenant = {
+        id: tenantId,
+        name: 'Test Tenant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: TenantStatus.ACTIVE,
+        subdomain: 'original-tenant',
+      };
       const newAddress = {
         id: '1',
         ...addressDto,
@@ -343,13 +354,25 @@ describe('TenantsService', () => {
         entityType: 'TENANT',
         tenantId,
       };
-
+      // Mock for query runner manager.save in transaction
+      const mockQueryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          save: jest.fn().mockResolvedValue(newAddress),
+          remove: jest.fn(),
+        },
+      };
+      mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
       tenantRepository.findById.mockResolvedValue(tenant);
       addressRepository.create.mockReturnValue(newAddress);
-      addressRepository.save.mockResolvedValue(newAddress);
 
       const result = await service.addAddressToTenant(tenantId, addressDto);
 
+      // Expect the service to return the address object
       expect(result).toEqual(newAddress);
       expect(tenantRepository.findById).toHaveBeenCalledWith(tenantId);
       expect(addressRepository.create).toHaveBeenCalledWith({
@@ -358,7 +381,8 @@ describe('TenantsService', () => {
         entityType: 'TENANT',
         tenantId,
       });
-      expect(addressRepository.save).toHaveBeenCalledWith(newAddress);
+      // Check transaction manager was used to save instead of repository directly
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(newAddress);
     });
   });
 
@@ -371,7 +395,14 @@ describe('TenantsService', () => {
         phone: '123-456-7890',
         isPrimary: true,
       };
-      const tenant = { id: tenantId, name: 'Test Tenant' };
+      const tenant = {
+        id: tenantId,
+        name: 'Test Tenant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: TenantStatus.ACTIVE,
+        subdomain: 'original-tenant',
+      };
       const newContactInfo = {
         id: '1',
         ...contactInfoDto,
@@ -379,13 +410,25 @@ describe('TenantsService', () => {
         entityType: 'TENANT',
         tenantId,
       };
-
+      // Mock for query runner manager.save in transaction
+      const mockQueryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          save: jest.fn().mockResolvedValue(newContactInfo),
+          remove: jest.fn(),
+        },
+      };
+      mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
       tenantRepository.findById.mockResolvedValue(tenant);
       contactInfoRepository.create.mockReturnValue(newContactInfo);
-      contactInfoRepository.save.mockResolvedValue(newContactInfo);
 
       const result = await service.addContactInfoToTenant(tenantId, contactInfoDto);
 
+      // Expect the service to return the contact info object
       expect(result).toEqual(newContactInfo);
       expect(tenantRepository.findById).toHaveBeenCalledWith(tenantId);
       expect(contactInfoRepository.create).toHaveBeenCalledWith({
@@ -394,7 +437,8 @@ describe('TenantsService', () => {
         entityType: 'TENANT',
         tenantId,
       });
-      expect(contactInfoRepository.save).toHaveBeenCalledWith(newContactInfo);
+      // Check transaction manager was used to save instead of repository directly
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(newContactInfo);
     });
   });
 

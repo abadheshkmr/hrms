@@ -1,36 +1,11 @@
 import { Entity, Column } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AuditBaseEntity } from '../../../common/entities/audit-base.entity';
-
-export enum BusinessType {
-  PRODUCT = 'PRODUCT',
-  SERVICE = 'SERVICE',
-  MANUFACTURING = 'MANUFACTURING',
-  RETAIL = 'RETAIL',
-  OTHER = 'OTHER',
-}
-
-export enum BusinessScale {
-  STARTUP = 'STARTUP',
-  SMALL = 'SMALL',
-  MEDIUM = 'MEDIUM',
-  LARGE = 'LARGE',
-  ENTERPRISE = 'ENTERPRISE',
-}
-
-export enum TenantStatus {
-  ACTIVE = 'ACTIVE',
-  PENDING = 'PENDING',
-  SUSPENDED = 'SUSPENDED',
-  TERMINATED = 'TERMINATED',
-}
-
-export enum VerificationStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  VERIFIED = 'VERIFIED',
-  REJECTED = 'REJECTED',
-}
+import { RegistrationInfo } from './embedded/registration-info.entity';
+import { BusinessInfo } from './embedded/business-info.entity';
+import { VerificationInfo } from './embedded/verification-info.entity';
+import { ContactDetails } from './embedded/contact-details.entity';
+import { TenantStatus } from '../enums/tenant.enums';
 
 @Entity('tenants')
 export class Tenant extends AuditBaseEntity {
@@ -61,58 +36,19 @@ export class Tenant extends AuditBaseEntity {
   @Column({ nullable: true })
   legalName: string;
 
-  @ApiProperty({
-    description: 'The type of business',
-    enum: BusinessType,
-    example: BusinessType.SERVICE,
-  })
-  @Column({
-    type: 'enum',
-    enum: BusinessType,
-    nullable: true,
-  })
-  businessType: BusinessType;
+  /**
+   * Business information embedded entity
+   * Groups related business fields (type, scale, industry, etc.)
+   */
+  @Column(() => BusinessInfo)
+  business: BusinessInfo;
 
-  @ApiProperty({
-    description: 'The scale/size of the business',
-    enum: BusinessScale,
-    example: BusinessScale.MEDIUM,
-  })
-  @Column({
-    type: 'enum',
-    enum: BusinessScale,
-    nullable: true,
-  })
-  businessScale: BusinessScale;
-
-  @ApiProperty({
-    description: 'The main industry or business category',
-    example: 'Information Technology',
-  })
-  @Column({ nullable: true })
-  industry: string;
-
-  // Registration Information
-  @ApiProperty({
-    description: 'Company Identification Number',
-    example: 'U72200MH2010PTC123456',
-  })
-  @Column({ nullable: true })
-  cinNumber: string;
-
-  @ApiProperty({
-    description: 'Permanent Account Number',
-    example: 'ABCDE1234F',
-  })
-  @Column({ nullable: true })
-  panNumber: string;
-
-  @ApiProperty({
-    description: 'GST Identification Number',
-    example: '27AAPFU0939F1ZV',
-  })
-  @Column({ nullable: true })
-  gstNumber: string;
+  /**
+   * Registration information embedded entity
+   * Groups registration-related fields (CIN, PAN, GST, etc.)
+   */
+  @Column(() => RegistrationInfo)
+  registration: RegistrationInfo;
 
   @ApiProperty({
     description: 'Whether the tenant is active',
@@ -133,38 +69,19 @@ export class Tenant extends AuditBaseEntity {
   })
   status: TenantStatus;
 
-  @ApiProperty({
-    description: 'The verification status of the tenant',
-    enum: VerificationStatus,
-    example: VerificationStatus.VERIFIED,
-  })
-  @Column({
-    type: 'enum',
-    enum: VerificationStatus,
-    default: VerificationStatus.PENDING,
-  })
-  verificationStatus: VerificationStatus;
+  /**
+   * Verification information embedded entity
+   * Groups verification-related fields (status, date, verifiedBy, notes)
+   */
+  @Column(() => VerificationInfo)
+  verification: VerificationInfo;
 
-  @ApiProperty({
-    description: 'Website URL of the organization',
-    example: 'https://www.acmecorp.com',
-  })
-  @Column({ nullable: true })
-  website: string;
-
-  @ApiProperty({
-    description: 'Primary email address for the tenant',
-    example: 'info@acmecorp.com',
-  })
-  @Column({ nullable: true })
-  primaryEmail: string;
-
-  @ApiProperty({
-    description: 'Primary phone number for the tenant',
-    example: '+1234567890',
-  })
-  @Column({ nullable: true })
-  primaryPhone: string;
+  /**
+   * Contact details embedded entity
+   * Groups contact-related fields (website, email, phone)
+   */
+  @Column(() => ContactDetails)
+  contact: ContactDetails;
 
   @ApiProperty({
     description: 'Unique identifier for the tenant (used in URLs and references)',
@@ -193,41 +110,6 @@ export class Tenant extends AuditBaseEntity {
   })
   @Column({ nullable: true })
   msmeNumber: string;
-
-  @ApiProperty({
-    description: 'Brief description of the tenant organization',
-    example: 'Leading provider of cloud solutions for businesses',
-  })
-  @Column({ nullable: true, type: 'text' })
-  description: string;
-
-  @ApiProperty({
-    description: 'Number of employees in the organization',
-    example: 250,
-  })
-  @Column({ nullable: true, type: 'int' })
-  employeeCount: number;
-
-  @ApiProperty({
-    description: 'Date when verification was completed',
-    example: '2023-05-20T14:30:00Z',
-  })
-  @Column({ nullable: true })
-  verificationDate: Date;
-
-  @ApiProperty({
-    description: 'User ID who verified the tenant',
-    example: '5f8d2f3b-c6e5-4d7a-8f1d-9c5a3e5d6b4d',
-  })
-  @Column({ nullable: true })
-  verifiedById: string;
-
-  @ApiProperty({
-    description: 'Notes added during the verification process',
-    example: 'All documents verified. Business registration confirmed with authorities.',
-  })
-  @Column({ nullable: true, type: 'text' })
-  verificationNotes: string;
 
   // Note: Instead of embedding address and contact info directly,
   // we use the relationship with our standardized entities

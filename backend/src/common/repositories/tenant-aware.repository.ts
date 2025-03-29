@@ -182,6 +182,48 @@ export class TenantAwareRepository<T extends TenantBaseEntity> extends GenericRe
   }
 
   /**
+   * Override findPaginated method to apply tenant filtering
+   * @param options - FindManyOptions for filtering
+   * @param page - Page number (starting from 1)
+   * @param limit - Number of items per page
+   * @returns Promise with paginated result for the current tenant
+   */
+  async findPaginated(
+    options?: FindManyOptions<T>,
+    page = 1,
+    limit = 10,
+  ): Promise<{ items: T[]; total: number; page: number; limit: number; pages: number }> {
+    const tenantOptions = this.applyTenantFilter(options || {});
+    return super.findPaginated(tenantOptions, page, limit);
+  }
+
+  /**
+   * Find entities across all tenants (admin only)
+   * @param options - FindManyOptions for filtering
+   * @returns Promise with array of entities from all tenants
+   */
+  async findAcrossTenants(options?: FindManyOptions<T>): Promise<T[]> {
+    // Skip tenant filtering for this specific query
+    return super.find(options);
+  }
+
+  /**
+   * Find entities across all tenants with pagination (admin only)
+   * @param options - FindManyOptions for filtering
+   * @param page - Page number (starting from 1)
+   * @param limit - Number of items per page
+   * @returns Promise with paginated result across all tenants
+   */
+  async findPaginatedAcrossTenants(
+    options?: FindManyOptions<T>,
+    page = 1,
+    limit = 10,
+  ): Promise<{ items: T[]; total: number; page: number; limit: number; pages: number }> {
+    // Skip tenant filtering for this specific query
+    return super.findPaginated(options, page, limit);
+  }
+
+  /**
    * Override createQueryBuilder to apply tenant filtering
    * @param alias - Entity alias for query
    * @returns QueryBuilder instance with tenant filter
@@ -189,5 +231,14 @@ export class TenantAwareRepository<T extends TenantBaseEntity> extends GenericRe
   createQueryBuilder(alias: string): SelectQueryBuilder<T> {
     const tenantId = this.getCurrentTenantId();
     return super.createQueryBuilder(alias).andWhere(`${alias}.tenantId = :tenantId`, { tenantId });
+  }
+
+  /**
+   * Create a query builder without tenant filtering (admin only)
+   * @param alias - Entity alias for query
+   * @returns QueryBuilder instance without tenant filter
+   */
+  createQueryBuilderAcrossTenants(alias: string): SelectQueryBuilder<T> {
+    return super.createQueryBuilder(alias);
   }
 }

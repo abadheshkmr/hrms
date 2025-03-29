@@ -112,6 +112,35 @@ export class GenericRepository<T extends BaseEntity> {
   }
 
   /**
+   * Find entities with pagination support
+   * @param options - FindManyOptions for filtering
+   * @param page - Page number (starting from 1)
+   * @param limit - Number of items per page
+   * @returns Promise with paginated result containing items, total count, and pagination metadata
+   */
+  async findPaginated(
+    options?: FindManyOptions<T>,
+    page = 1,
+    limit = 10,
+  ): Promise<{ items: T[]; total: number; page: number; limit: number; pages: number }> {
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.repository.findAndCount({
+      ...options,
+      skip,
+      take: limit,
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
    * Get query builder for creating custom queries
    * @param alias - Entity alias for the query
    * @returns SelectQueryBuilder instance

@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { Tenant, TenantStatus, VerificationStatus } from '../entities/tenant.entity';
+import { DataSource, QueryRunner, Repository } from 'typeorm';
+import { Tenant } from '../entities/tenant.entity';
+import { TenantStatus, VerificationStatus } from '../enums/tenant.enums';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { EventsService } from '../../../core/events/events.service';
@@ -24,6 +25,35 @@ export class TenantsService {
     private readonly eventsService: EventsService,
     private dataSource: DataSource,
   ) {}
+
+  /**
+   * Execute a function within a transaction
+   * @param operation - Function to execute within the transaction
+   * @returns Promise with result of the operation
+   */
+  private async executeInTransaction<T>(
+    operation: (queryRunner: QueryRunner) => Promise<T>,
+  ): Promise<T> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const result = await operation(queryRunner);
+      await queryRunner.commitTransaction();
+      return result;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      // Wrap unknown errors as internal server errors with original message
+      if (!(error instanceof Error)) {
+        throw new InternalServerErrorException('Unknown error during transaction');
+      }
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
   /**
    * Find all active tenants
@@ -119,58 +149,51 @@ export class TenantsService {
    * @returns Promise with created tenant
    */
   async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
+    // Execute the tenant creation in a transaction
+    const savedTenant = await this.executeInTransaction(async (queryRunner) => {
       // Create tenant with default status values
       const tenant = this.tenantRepository.create({
         ...createTenantDto,
         status: TenantStatus.PENDING,
-        verificationStatus: VerificationStatus.PENDING,
+        verification: {
+          verificationStatus: VerificationStatus.PENDING,
+        },
         isActive: true,
         tenantId: null, // Explicitly set to null since a tenant doesn't belong to another tenant
       });
 
-      const savedTenant = await queryRunner.manager.save(tenant);
-      // Prepare tenant data for event with proper typing
-      const tenantData: TenantData = {
-        id: savedTenant.id,
-        name: savedTenant.name,
-        domain: savedTenant.subdomain,
-        status: savedTenant.isActive ? 'active' : 'inactive',
-        createdAt: savedTenant.createdAt,
-        updatedAt: savedTenant.updatedAt,
-      };
+      return await queryRunner.manager.save(tenant);
+    });
 
-      // Commit the transaction
-      await queryRunner.commitTransaction();
+    // Prepare tenant data for event with proper typing
+    const tenantData: TenantData = {
+      id: savedTenant.id,
+      name: savedTenant.name,
+      domain: savedTenant.subdomain,
+      status: savedTenant.isActive ? 'active' : 'inactive',
+      createdAt: savedTenant.createdAt,
+      updatedAt: savedTenant.updatedAt,
+    };
 
-      // Publish event for tenant creation (moved outside transaction)
-      await this.eventsService.publishTenantCreated(tenantData);
+    // Publish event for tenant creation (outside transaction)
+    await this.eventsService.publishTenantCreated(tenantData);
 
-      return savedTenant;
-    } catch (error) {
-      // Rollback in case of error
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      // Release the query runner
-      await queryRunner.release();
-    }
+    return savedTenant;
   }
 
   async addAddressToTenant(tenantId: string, addressDto: AddressDto): Promise<Address> {
     const tenant = await this.findById(tenantId);
 
-    const address = this.addressRepository.create({
-      ...addressDto,
-      entityId: tenant.id,
-      entityType: 'TENANT',
-      tenantId: tenant.id, // The tenant's ID is always used as the tenantId for related entities
-    });
+    return this.executeInTransaction(async (queryRunner) => {
+      const address = this.addressRepository.create({
+        ...addressDto,
+        entityId: tenant.id,
+        entityType: 'TENANT',
+        tenantId: tenant.id, // The tenant's ID is always used as the tenantId for related entities
+      });
 
-    return this.addressRepository.save(address);
+      return queryRunner.manager.save(address);
+    });
   }
 
   async getAddressesByTenantId(tenantId: string): Promise<Address[]> {
@@ -189,14 +212,16 @@ export class TenantsService {
   ): Promise<ContactInfo> {
     const tenant = await this.findById(tenantId);
 
-    const contactInfo = this.contactInfoRepository.create({
-      ...contactInfoDto,
-      entityId: tenant.id,
-      entityType: 'TENANT',
-      tenantId: tenant.id, // The tenant's ID is always used as the tenantId for related entities
-    });
+    return this.executeInTransaction(async (queryRunner) => {
+      const contactInfo = this.contactInfoRepository.create({
+        ...contactInfoDto,
+        entityId: tenant.id,
+        entityType: 'TENANT',
+        tenantId: tenant.id, // The tenant's ID is always used as the tenantId for related entities
+      });
 
-    return this.contactInfoRepository.save(contactInfo);
+      return queryRunner.manager.save(contactInfo);
+    });
   }
 
   async getContactInfoByTenantId(tenantId: string): Promise<ContactInfo[]> {
@@ -216,43 +241,32 @@ export class TenantsService {
    * @returns Promise with updated tenant
    */
   async update(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      const tenant = await this.findById(id);
+    const tenant = await this.findById(id);
+
+    // Execute the tenant update in a transaction
+    const updatedTenant = await this.executeInTransaction(async (queryRunner) => {
       Object.assign(tenant, updateTenantDto);
 
       // Ensure tenantId remains null for Tenant entities
       tenant.tenantId = null;
 
-      const updatedTenant = await queryRunner.manager.save(tenant);
+      return await queryRunner.manager.save(tenant);
+    });
 
-      // Prepare tenant data for event with proper typing
-      const tenantData: TenantData = {
-        id: updatedTenant.id,
-        name: updatedTenant.name,
-        domain: updatedTenant.subdomain,
-        status: updatedTenant.isActive ? 'active' : 'inactive',
-        createdAt: updatedTenant.createdAt,
-        updatedAt: updatedTenant.updatedAt,
-      };
+    // Prepare tenant data for event with proper typing
+    const tenantData: TenantData = {
+      id: updatedTenant.id,
+      name: updatedTenant.name,
+      domain: updatedTenant.subdomain,
+      status: updatedTenant.isActive ? 'active' : 'inactive',
+      createdAt: updatedTenant.createdAt,
+      updatedAt: updatedTenant.updatedAt,
+    };
 
-      // Commit the transaction
-      await queryRunner.commitTransaction();
+    // Publish event for tenant update (outside transaction)
+    await this.eventsService.publishTenantUpdated(tenantData);
 
-      // Publish event for tenant update (moved outside transaction)
-      await this.eventsService.publishTenantUpdated(tenantData);
-
-      return updatedTenant;
-    } catch (error) {
-      // Rollback in case of error
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      // Release the query runner
-      await queryRunner.release();
-    }
+    return updatedTenant;
   }
 
   /**
@@ -297,18 +311,32 @@ export class TenantsService {
     verifiedById: string,
     verificationNotes?: string,
   ): Promise<Tenant> {
-    const updatedTenant = await this.tenantRepository.setVerificationStatus(
-      id,
-      verificationStatus,
-      verifiedById,
-      verificationNotes,
-    );
+    // First check if tenant exists
+    const tenant = await this.findById(id);
 
-    if (!updatedTenant) {
-      throw new NotFoundException(`Tenant with ID ${id} not found`);
-    }
+    // Execute verification status update in a transaction
+    return this.executeInTransaction(async (queryRunner) => {
+      // Initialize verification property if not exists
+      if (!tenant.verification) {
+        tenant.verification = {
+          verificationStatus: VerificationStatus.PENDING,
+        };
+      }
 
-    return updatedTenant;
+      // Update verification information
+      tenant.verification.verificationStatus = verificationStatus;
+      tenant.verification.verifiedById = verifiedById;
+
+      if (verificationStatus === VerificationStatus.VERIFIED) {
+        tenant.verification.verificationDate = new Date();
+      }
+
+      if (verificationNotes) {
+        tenant.verification.verificationNotes = verificationNotes;
+      }
+
+      return queryRunner.manager.save(tenant);
+    });
   }
 
   async updateAddress(addressId: string, addressDto: AddressDto): Promise<Address> {
@@ -318,8 +346,10 @@ export class TenantsService {
       throw new NotFoundException(`Address with ID ${addressId} not found`);
     }
 
-    Object.assign(address, addressDto);
-    return this.addressRepository.save(address);
+    return this.executeInTransaction(async (queryRunner) => {
+      Object.assign(address, addressDto);
+      return queryRunner.manager.save(address);
+    });
   }
 
   async updateContactInfo(
@@ -332,26 +362,26 @@ export class TenantsService {
       throw new NotFoundException(`Contact info with ID ${contactInfoId} not found`);
     }
 
-    Object.assign(contactInfo, contactInfoDto);
-    return this.contactInfoRepository.save(contactInfo);
+    return this.executeInTransaction(async (queryRunner) => {
+      Object.assign(contactInfo, contactInfoDto);
+      return queryRunner.manager.save(contactInfo);
+    });
   }
 
   async remove(id: string): Promise<void> {
     const tenant = await this.findById(id);
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const addresses = await this.getAddressesByTenantId(id);
+    const contacts = await this.getContactInfoByTenantId(id);
 
-    try {
+    // Execute all deletions in a single transaction
+    await this.executeInTransaction(async (queryRunner) => {
       // Soft delete associated addresses
-      const addresses = await this.getAddressesByTenantId(id);
       for (const address of addresses) {
         address.isDeleted = true;
         await queryRunner.manager.save(address);
       }
 
       // Soft delete associated contact info
-      const contacts = await this.getContactInfoByTenantId(id);
       for (const contact of contacts) {
         contact.isDeleted = true;
         await queryRunner.manager.save(contact);
@@ -359,20 +389,10 @@ export class TenantsService {
 
       // Remove the tenant
       await queryRunner.manager.remove(tenant);
+    });
 
-      // Commit the transaction
-      await queryRunner.commitTransaction();
-
-      // Publish event outside of transaction
-      await this.eventsService.publishTenantDeleted(id);
-    } catch (error) {
-      // Rollback in case of error
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      // Release the query runner
-      await queryRunner.release();
-    }
+    // Publish event outside of transaction
+    await this.eventsService.publishTenantDeleted(id);
   }
 
   async removeAddress(addressId: string): Promise<void> {
@@ -382,9 +402,12 @@ export class TenantsService {
       throw new NotFoundException(`Address with ID ${addressId} not found`);
     }
 
-    // Use soft delete
-    address.isDeleted = true;
-    await this.addressRepository.save(address);
+    // Execute soft delete in a transaction
+    await this.executeInTransaction(async (queryRunner) => {
+      // Use soft delete
+      address.isDeleted = true;
+      await queryRunner.manager.save(address);
+    });
   }
 
   async removeContactInfo(contactInfoId: string): Promise<void> {
@@ -394,8 +417,11 @@ export class TenantsService {
       throw new NotFoundException(`Contact info with ID ${contactInfoId} not found`);
     }
 
-    // Use soft delete
-    contactInfo.isDeleted = true;
-    await this.contactInfoRepository.save(contactInfo);
+    // Execute soft delete in a transaction
+    await this.executeInTransaction(async (queryRunner) => {
+      // Use soft delete
+      contactInfo.isDeleted = true;
+      await queryRunner.manager.save(contactInfo);
+    });
   }
 }

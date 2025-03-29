@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 import { TenantAwareRepository, TenantRequiredException } from './tenant-aware.repository';
-import { TenantContextService } from '../services/tenant-context.service';
+import { TenantContextService } from '../../modules/tenants/services/tenant-context.service';
 import { TenantBaseEntity } from '../entities/tenant-base.entity';
 import { NotFoundException } from '@nestjs/common';
 
@@ -76,8 +76,8 @@ describe('TenantAwareRepository', () => {
     // Get the tenant context service - use resolve() for scoped providers
     tenantContextService = await module.resolve<TenantContextService>(TenantContextService);
 
-    // Set the tenant ID
-    tenantContextService.setTenantId(TEST_TENANT_ID);
+    // Setup tenant context with the new API
+    jest.spyOn(tenantContextService, 'getCurrentTenantId').mockReturnValue(TEST_TENANT_ID);
 
     // Create repository instance with mocked dependencies
     tenantAwareRepository = new TenantAwareRepository<TestTenantEntity>(
@@ -103,7 +103,7 @@ describe('TenantAwareRepository', () => {
 
     it('should throw TenantRequiredException if tenant ID is not set', () => {
       // Arrange
-      tenantContextService.clearTenantId();
+      jest.spyOn(tenantContextService, 'getCurrentTenantId').mockReturnValue(null);
 
       // Act & Assert
       expect(() =>
@@ -199,7 +199,7 @@ describe('TenantAwareRepository', () => {
 
     it('should throw when tenant context is missing', async () => {
       // Arrange
-      tenantContextService.clearTenantId();
+      jest.spyOn(tenantContextService, 'getCurrentTenantId').mockReturnValue(null);
 
       // Act & Assert
       await expect(tenantAwareRepository.find()).rejects.toThrow(TenantRequiredException);

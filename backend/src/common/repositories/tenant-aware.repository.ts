@@ -7,7 +7,7 @@ import {
   SelectQueryBuilder,
 } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { TenantContextService } from '../services/tenant-context.service';
+import { TenantContextService } from '../../modules/tenants/services/tenant-context.service';
 import { TenantBaseEntity } from '../entities/tenant-base.entity';
 import { GenericRepository } from './generic.repository';
 
@@ -43,7 +43,7 @@ export class TenantAwareRepository<T extends TenantBaseEntity> extends GenericRe
    * @throws TenantRequiredException if tenant context is not set
    */
   private getCurrentTenantId(): string {
-    const tenantId = this.tenantContextService.getTenantId();
+    const tenantId = this.tenantContextService.getCurrentTenantId();
     if (!tenantId) {
       throw new TenantRequiredException();
     }

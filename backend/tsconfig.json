@@ -19,6 +19,6 @@
     "noFallthroughCasesInSwitch": false,
     "allowJs": true
   },
-  "include": ["src/**/*", ".eslintrc.cjs", ".eslintrc.js"],
+  "include": ["src/**/*", "test/**/*", ".eslintrc.cjs", ".eslintrc.js"],
   "exclude": ["node_modules", "dist"]
 }

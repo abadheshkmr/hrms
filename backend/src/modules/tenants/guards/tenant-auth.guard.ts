@@ -18,7 +18,7 @@ export class TenantAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     // Get the tenant ID from the request (set by the TenantMiddleware)
-    const tenantId = request['tenantId'];
+    const tenantId = request['tenantId'] as string | undefined;
     // TODO: Get the user ID from the auth context when auth is implemented
     // For now, we just validate that the tenant exists and is active
     return this.tenantValidationService.validateTenantActive(tenantId);

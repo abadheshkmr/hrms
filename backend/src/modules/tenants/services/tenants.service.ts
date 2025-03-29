@@ -1,17 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { Tenant, TenantStatus, VerificationStatus } from './entities/tenant.entity';
-import { CreateTenantDto } from './dto/create-tenant.dto';
-import { UpdateTenantDto } from './dto/update-tenant.dto';
-import { EventsService } from '../../core/events/events.service';
-import { Address } from '../../common/entities/address.entity';
-import { ContactInfo } from '../../common/entities/contact-info.entity';
-import { AddressDto } from '../../common/dto/address.dto';
-import { ContactInfoDto } from '../../common/dto/contact-info.dto';
-import { TenantWithRelations } from '../../common/interfaces/tenant-result.interface';
-import { TenantData } from '../../common/interfaces/tenant.interface';
-import { TenantRepository } from './repositories/tenant.repository';
+import { Tenant, TenantStatus, VerificationStatus } from '../entities/tenant.entity';
+import { CreateTenantDto } from '../dto/create-tenant.dto';
+import { UpdateTenantDto } from '../dto/update-tenant.dto';
+import { EventsService } from '../../../core/events/events.service';
+import { Address } from '../../../common/entities/address.entity';
+import { ContactInfo } from '../../../common/entities/contact-info.entity';
+import { AddressDto } from '../../../common/dto/address.dto';
+import { ContactInfoDto } from '../../../common/dto/contact-info.dto';
+import { TenantWithRelations } from '../../../common/interfaces/tenant-result.interface';
+import { TenantData } from '../../../common/interfaces/tenant.interface';
+import { TenantRepository } from '../repositories/tenant.repository';
 
 @Injectable()
 export class TenantsService {

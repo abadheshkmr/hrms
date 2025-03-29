@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { TenantContextService } from '../services/tenant-context.service';
-import { TenantsService } from '../tenants.service';
+import { TenantsService } from '../services/tenants.service';
 
 /**
  * Middleware to extract and set tenant context for the current request

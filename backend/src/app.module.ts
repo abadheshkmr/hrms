@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { ConfigModule } from './core/config/config.module';
 import { DatabaseModule } from './core/database/database.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
-import { TenantMiddleware } from './modules/tenants/tenant.middleware';
+import { TenantMiddleware } from './modules/tenants/middleware/tenant.middleware';
 import { EventsModule } from './core/events/events.module';
 import { CommonModule } from './common/common.module';
 

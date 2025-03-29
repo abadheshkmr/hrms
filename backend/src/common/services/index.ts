@@ -1,1 +1,1 @@
-export * from './tenant-context.service';
+export * from '../../modules/tenants/services/tenant-context.service';

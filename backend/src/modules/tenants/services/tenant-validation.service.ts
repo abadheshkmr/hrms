@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TenantsService } from '../tenants.service';
+import { TenantsService } from './tenants.service';
 import { TenantContextService } from './tenant-context.service';
 import {
   InactiveTenantException,
@@ -67,7 +67,7 @@ export class TenantValidationService {
   /**
    * Validate tenant access based on user permissions
    * @param tenantId The tenant ID to check access for
-   * @param userId The user ID requesting access
+   * @param _userId The user ID to check access for
    * @returns Promise resolving to true if access is allowed, throws exception otherwise
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

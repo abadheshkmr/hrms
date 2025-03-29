@@ -14,6 +14,7 @@ import { Request } from 'express';
 export const CurrentTenant = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): string | null => {
     const request = ctx.switchToHttp().getRequest<Request>();
-    return request['tenantId'] || null;
+    const tenantId = request['tenantId'] as string | undefined;
+    return tenantId || null;
   },
 );

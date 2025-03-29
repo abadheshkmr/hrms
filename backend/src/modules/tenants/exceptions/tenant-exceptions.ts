@@ -23,7 +23,10 @@ export class InactiveTenantException extends HttpException {
  */
 export class UnauthorizedTenantAccessException extends HttpException {
   constructor(id?: string) {
-    super(id ? `Unauthorized access to tenant with ID ${id}` : 'Unauthorized tenant access', HttpStatus.FORBIDDEN);
+    super(
+      id ? `Unauthorized access to tenant with ID ${id}` : 'Unauthorized tenant access',
+      HttpStatus.FORBIDDEN,
+    );
   }
 }
 

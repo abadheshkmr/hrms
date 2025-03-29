@@ -4,7 +4,7 @@ import { BaseEntity } from '../entities/base.entity';
 import { TenantBaseEntity } from '../entities/tenant-base.entity';
 import { GenericRepository } from '../repositories/generic.repository';
 import { TenantAwareRepository } from '../repositories/tenant-aware.repository';
-import { TenantContextService } from './tenant-context.service';
+import { TenantContextService } from '../../modules/tenants/services/tenant-context.service';
 
 /**
  * Factory service for creating repositories dynamically

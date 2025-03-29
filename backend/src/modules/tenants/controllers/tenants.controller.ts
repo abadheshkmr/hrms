@@ -9,15 +9,15 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { TenantsService } from './tenants.service';
-import { Tenant } from './entities/tenant.entity';
-import { CreateTenantDto } from './dto/create-tenant.dto';
-import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { TenantsService } from '../services/tenants.service';
+import { Tenant } from '../entities/tenant.entity';
+import { CreateTenantDto } from '../dto/create-tenant.dto';
+import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
-import { Address } from '../../common/entities/address.entity';
-import { ContactInfo } from '../../common/entities/contact-info.entity';
-import { AddressDto } from '../../common/dto/address.dto';
-import { ContactInfoDto } from '../../common/dto/contact-info.dto';
+import { Address } from '../../../common/entities/address.entity';
+import { ContactInfo } from '../../../common/entities/contact-info.entity';
+import { AddressDto } from '../../../common/dto/address.dto';
+import { ContactInfoDto } from '../../../common/dto/contact-info.dto';
 
 @ApiTags('tenants')
 @Controller('tenants')

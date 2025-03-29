@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TenantsController } from './tenants.controller';
-import { TenantsService } from './tenants.service';
+import { TenantsController } from './controllers/tenants.controller';
+import { TenantsService } from './services/tenants.service';
 import { Tenant } from './entities/tenant.entity';
 import { EventsModule } from '../../core/events/events.module';
 import { CommonModule } from '../../common/common.module';

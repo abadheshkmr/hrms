@@ -1,6 +1,6 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TenantContextService } from './services/tenant-context.service';
+import { TenantContextService } from '../modules/tenants/services/tenant-context.service';
 import { RepositoryFactory } from './services/repository.factory';
 
 @Module({
@@ -10,7 +10,6 @@ import { RepositoryFactory } from './services/repository.factory';
 export class CommonModule {
   /**
    * Create a dynamic module for common functionality
-   * @param options - Configuration options
    * @returns Dynamic module configuration
    */
   static forRoot(): DynamicModule {

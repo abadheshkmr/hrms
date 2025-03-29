@@ -1,11 +1,21 @@
 import { Test } from '@nestjs/testing';
 import { DataSource, EntityManager } from 'typeorm';
 import { RepositoryFactory } from './repository.factory';
-import { TenantContextService } from './tenant-context.service';
+import { TenantContextService } from '../../modules/tenants/services/tenant-context.service';
 import { GenericRepository } from '../repositories/generic.repository';
 import { TenantAwareRepository } from '../repositories/tenant-aware.repository';
 import { BaseEntity } from '../entities/base.entity';
 import { TenantBaseEntity } from '../entities/tenant-base.entity';
+
+// Type interfaces for accessing private repository properties in tests
+type GenericRepositoryInternals<T> = {
+  entityType: new () => T;
+  entityManager: EntityManager;
+};
+
+type TenantAwareRepositoryInternals<T> = GenericRepositoryInternals<T> & {
+  tenantContextService: TenantContextService;
+};
 
 // Sample regular entity class for testing
 class TestEntity extends BaseEntity {
@@ -77,8 +87,8 @@ describe('RepositoryFactory', () => {
 
     // Get services
     repositoryFactory = module.get<RepositoryFactory>(RepositoryFactory);
-    dataSource = mockDataSource; // Use the mock directly
-    tenantContextService = mockTenantContextService; // Use the mock directly
+    dataSource = mockDataSource;
+    tenantContextService = mockTenantContextService;
   });
 
   describe('createGenericRepository', () => {
@@ -88,8 +98,11 @@ describe('RepositoryFactory', () => {
 
       // Assert
       expect(repository).toBeInstanceOf(GenericRepository);
-      expect((repository as any).entityType).toBe(TestEntity);
-      expect((repository as any).entityManager).toBe(dataSource.manager);
+      // Access private properties safely using proper type assertions
+      const repoInternal = repository as unknown as GenericRepositoryInternals<TestEntity>;
+
+      expect(repoInternal.entityType).toBe(TestEntity);
+      expect(repoInternal.entityManager).toBe(dataSource.manager);
     });
   });
 
@@ -100,9 +113,13 @@ describe('RepositoryFactory', () => {
 
       // Assert
       expect(repository).toBeInstanceOf(TenantAwareRepository);
-      expect((repository as any).entityType).toBe(TestTenantEntity);
-      expect((repository as any).entityManager).toBe(dataSource.manager);
-      expect((repository as any).tenantContextService).toBe(tenantContextService);
+      // Access private properties safely using proper type assertions
+      const repoInternal =
+        repository as unknown as TenantAwareRepositoryInternals<TestTenantEntity>;
+
+      expect(repoInternal.entityType).toBe(TestTenantEntity);
+      expect(repoInternal.entityManager).toBe(dataSource.manager);
+      expect(repoInternal.tenantContextService).toBe(tenantContextService);
     });
   });
 
@@ -113,7 +130,12 @@ describe('RepositoryFactory', () => {
 
       // Assert
       expect(repository).toBeInstanceOf(GenericRepository);
-      expect((repository as any).entityType).toBe(TestEntity);
+
+      // Access private properties safely using proper type assertions
+      const repoInternal = repository as unknown as GenericRepositoryInternals<TestEntity>;
+
+      expect(repoInternal.entityType).toBe(TestEntity);
+
       // Should not be a TenantAwareRepository
       expect(repository).not.toBeInstanceOf(TenantAwareRepository);
     });
@@ -125,7 +147,8 @@ describe('RepositoryFactory', () => {
 
       // For testing, we'll temporarily modify the repository factory's implementation
       // to check the entity class name instead of prototype
-      jest.spyOn(Object.getPrototypeOf(TestTenantEntity.prototype), 'constructor')
+      jest
+        .spyOn(Object.getPrototypeOf(TestTenantEntity.prototype), 'constructor')
         .mockImplementation(() => TenantBaseEntity);
 
       // Act
@@ -133,7 +156,12 @@ describe('RepositoryFactory', () => {
 
       // Assert
       expect(repository).toBeInstanceOf(TenantAwareRepository);
-      expect((repository as any).entityType).toBe(TestTenantEntity);
+
+      // Access private properties safely using proper type assertions
+      const repoInternal =
+        repository as unknown as TenantAwareRepositoryInternals<TestTenantEntity>;
+
+      expect(repoInternal.entityType).toBe(TestTenantEntity);
     });
   });
 

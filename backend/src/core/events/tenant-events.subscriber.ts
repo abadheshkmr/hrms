@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import { Logger } from '@nestjs/common';
-import { TenantContextService } from '../../common/services/tenant-context.service';
+import { TenantContextService } from '../../modules/tenants/services/tenant-context.service';
 import {
   TenantCreatedEvent,
   TenantUpdatedEvent,
@@ -29,7 +29,11 @@ export class TenantEventsSubscriber {
 
     // Set tenant context if needed for operations
     if (msg.tenant && msg.tenant.id) {
-      this.tenantContextService.setTenantId(msg.tenant.id);
+      // Use runWithTenantId to run operations in tenant context
+      this.tenantContextService.runWithTenantId(msg.tenant.id, () => {
+        // Place any tenant-specific initialization logic here
+        this.logger.log(`Running in tenant context: ${msg.tenant?.id}`);
+      });
     }
   }
 
@@ -47,7 +51,11 @@ export class TenantEventsSubscriber {
 
     // Set tenant context if needed for operations
     if (msg.tenant && msg.tenant.id) {
-      this.tenantContextService.setTenantId(msg.tenant.id);
+      // Use runWithTenantId to run operations in tenant context
+      this.tenantContextService.runWithTenantId(msg.tenant.id, () => {
+        // Place any tenant-specific update logic here
+        this.logger.log(`Running in tenant context: ${msg.tenant?.id}`);
+      });
     }
   }
 
@@ -66,7 +74,11 @@ export class TenantEventsSubscriber {
 
     // Set tenant context if needed for operations
     if (msg.tenantId) {
-      this.tenantContextService.setTenantId(msg.tenantId);
+      // Use runWithTenantId to run operations in tenant context
+      this.tenantContextService.runWithTenantId(msg.tenantId, () => {
+        // Place any tenant-specific cleanup logic here
+        this.logger.log(`Running in tenant context: ${msg.tenantId}`);
+      });
     }
   }
 }

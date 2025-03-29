@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TenantValidationService } from './tenant-validation.service';
 import { TenantContextService } from './tenant-context.service';
-import { TenantsService } from '../tenants.service';
+import { TenantsService } from './tenants.service';
 import {
   TenantNotFoundException,
   InactiveTenantException,

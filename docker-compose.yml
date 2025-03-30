@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: hrms
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -36,7 +36,7 @@ services:
       - DATABASE_NAME=hrms
       - RABBITMQ_URL=amqp://rabbitmq:5672
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -59,14 +59,14 @@ services:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://nginx:80/api
     ports:
-      - "3001:3000"
+      - '3001:3000'
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - tenant-frontend-node-modules:/app/node_modules
     networks:
       - hrms-network
-    command: npm run --workspace=tenant-management dev
-    
+    command: sh -c "cd /app && NODE_ENV=development npx turbo run dev --filter=tenant-management --no-daemon"
+
   # Admin Portal Frontend
   admin-frontend:
     build:
@@ -82,13 +82,13 @@ services:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://nginx:80/api
     ports:
-      - "3002:3000"
+      - '3002:3000'
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - admin-frontend-node-modules:/app/node_modules
     networks:
       - hrms-network
-    command: npm run --workspace=admin-portal dev
+    command: sh -c "cd /app && NODE_ENV=development npx turbo run dev --filter=admin-portal --no-daemon"
 
   # Nginx as API Gateway
   nginx:
@@ -100,7 +100,7 @@ services:
       - tenant-frontend
       - admin-frontend
     ports:
-      - "80:80"
+      - '80:80'
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
@@ -112,8 +112,8 @@ services:
     container_name: hrms-rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI port
+      - '5672:5672' # AMQP port
+      - '15672:15672' # Management UI port
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
@@ -126,6 +126,8 @@ services:
 volumes:
   postgres-data:
   rabbitmq-data:
+  tenant-frontend-node-modules:
+  admin-frontend-node-modules:
 
 # Networks
 networks:

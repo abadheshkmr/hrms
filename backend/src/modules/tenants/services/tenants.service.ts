@@ -96,16 +96,42 @@ export class TenantsService {
     return tenant;
   }
 
+  /**
+   * Get tenant with all related addresses and contact information
+   * @param id - Tenant ID
+   * @returns Promise with tenant and related data
+   */
   async getTenantWithAddressesAndContacts(id: string): Promise<TenantWithRelations> {
     const tenant = await this.findById(id);
     const addresses = await this.getAddressesByTenantId(id);
     const contacts = await this.getContactInfoByTenantId(id);
 
-    return {
-      ...tenant,
+    // Extract only the data properties from the tenant entity
+    // This avoids TypeScript errors with the methods from base entities
+    const tenantData = {
+      id: tenant.id,
+      createdAt: tenant.createdAt,
+      updatedAt: tenant.updatedAt,
+      isDeleted: tenant.isDeleted,
+      version: tenant.version,
+      tenantId: tenant.tenantId,
+      name: tenant.name,
+      subdomain: tenant.subdomain,
+      legalName: tenant.legalName,
+      isActive: tenant.isActive,
+      status: tenant.status,
+      identifier: tenant.identifier,
+      foundedDate: tenant.foundedDate,
+      business: tenant.business,
+      registration: tenant.registration,
+      verification: tenant.verification,
+      contact: tenant.contact,
+      // Include addresses and contacts
       addresses,
       contactInfo: contacts,
     };
+
+    return tenantData;
   }
 
   /**

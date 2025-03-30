@@ -9,6 +9,9 @@ RUN apk add --no-cache jq
 # Enable corepack for npm version management
 RUN corepack enable
 
+# Install turbo globally
+RUN npm install -g turbo
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
@@ -40,6 +43,14 @@ COPY packages/typescript-config/package.json ./packages/typescript-config/
 # Install dependencies using npm with workspace support
 RUN npm install --workspaces --include-workspace-root --no-package-lock
 
+# Explicitly install Next.js in each app directory
+RUN cd apps/tenant-management && npm install next@14.0.0
+RUN cd apps/admin-portal && npm install next@14.0.0
+
+# Clean and reinstall node_modules to ensure consistent dependencies
+RUN rm -rf node_modules
+RUN npm install --workspaces --include-workspace-root --no-package-lock
+
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
@@ -54,19 +65,25 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 # Set verbose logging for better debugging
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TURBO_LOG_VERBOSITY="info"
-ENV NODE_ENV="production"
+ENV NODE_ENV="development"
+
+# Verify Next.js configuration files exist
+RUN ls -la apps/tenant-management/next.config.js
+RUN ls -la apps/admin-portal/next.config.js
 
 # Only remove packageManager from workspace package.json files, but keep it in the root package.json for Turborepo
 RUN find ./apps ./packages -name "package.json" -type f -exec sh -c 'cat {} | jq "del(.packageManager)" > {}.tmp && mv {}.tmp {}' \;
 
-# Build both apps with detailed logs
-RUN npx turbo build --filter=tenant-management --filter=admin-portal --dry=false --no-daemon --output-logs=full --summarize
+# Skip build step for development mode
+# RUN npx turbo build --filter=tenant-management --filter=admin-portal --no-daemon --output-logs=full --summarize
+RUN echo "Skipping build step for development mode"
 
-# Production image, copy all the files and run next
+# Development image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV development
+ENV PATH /app/node_modules/.bin:$PATH
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs

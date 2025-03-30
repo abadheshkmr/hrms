@@ -7,13 +7,16 @@ import { ContactInfo } from '../../../common/entities/contact-info.entity';
 import { EventsService } from '../../../core/events/events.service';
 import { DataSource } from 'typeorm';
 import { Tenant } from './tenant.entity';
-import { TenantStatus, VerificationStatus, BusinessType, BusinessScale } from '../enums/tenant.enums';
-import { AddressType } from '../../../common/enums/address.enum';
-import { ContactType } from '../../../common/enums/contact.enum';
+import {
+  TenantStatus,
+  VerificationStatus,
+  BusinessType,
+  BusinessScale,
+} from '../enums/tenant.enums';
 
 describe('Tenant Embedded Entities Integration', () => {
   let service: TenantsService;
-  let tenantRepository: any;
+  let tenantRepository: jest.Mocked<TenantRepository>;
 
   beforeEach(async () => {
     // Create mock implementations
@@ -23,7 +26,7 @@ describe('Tenant Embedded Entities Integration', () => {
       update: jest.fn(),
       setVerificationStatus: jest.fn(),
       setStatus: jest.fn(),
-    };
+    } as unknown as jest.Mocked<TenantRepository>;
 
     const mockAddressRepository = {
       create: jest.fn(),
@@ -91,7 +94,8 @@ describe('Tenant Embedded Entities Integration', () => {
     }).compile();
 
     service = module.get<TenantsService>(TenantsService);
-    tenantRepository = module.get<TenantRepository>(TenantRepository);
+    // Get the repository and ensure proper typing
+    tenantRepository = module.get(TenantRepository);
   });
 
   describe('Embedded Entities in Tenant', () => {
@@ -107,7 +111,7 @@ describe('Tenant Embedded Entities Integration', () => {
         employeeCount: 150,
         foundedDate: new Date('2020-01-15'),
         description: 'A software development company',
-        // No verification methods on BusinessInfo
+        // BusinessInfo doesn't have verification methods
       };
 
       // Mock the repository response
@@ -139,7 +143,7 @@ describe('Tenant Embedded Entities Integration', () => {
         registrationDate: new Date('2021-01-10'),
         isRegistrationComplete: () => true,
         getFormattedRegistrationNumber: (type) => {
-          switch(type) {
+          switch (type) {
             case 'PAN':
               return 'AAAPL1234C';
             default:
@@ -159,7 +163,9 @@ describe('Tenant Embedded Entities Integration', () => {
       expect(result.registration).toBeDefined();
       expect(result.registration.cinNumber).toBe('U72200TN2021PTC141323');
       expect(result.registration.isRegistrationComplete()).toBe(true);
-      expect(result.registration.getFormattedRegistrationNumber('PAN')).toBe('AAAPL1234C');
+      expect(result.registration.getFormattedRegistrationNumber('PAN')).toBe(
+        'AAAPL1234C',
+      );
     });
 
     it('should properly handle VerificationInfo entity within Tenant', async () => {
@@ -175,8 +181,10 @@ describe('Tenant Embedded Entities Integration', () => {
         verificationDocuments: 'doc-001,doc-002',
         verificationAttempted: true,
         getVerificationDocuments: () => ['doc-001', 'doc-002'],
-        addVerificationDocument: () => {},
-        isVerificationComplete: function() {
+        addVerificationDocument: () => undefined,
+        isVerificationComplete: function (this: {
+          verificationStatus: VerificationStatus;
+        }) {
           return this.verificationStatus === VerificationStatus.VERIFIED;
         },
       };
@@ -184,18 +192,28 @@ describe('Tenant Embedded Entities Integration', () => {
       // Mock the repository responses
       tenantRepository.findById.mockResolvedValue(tenant);
       // Fix the service method mock to properly handle the tenant verification status update
-      service.setVerificationStatus = jest.fn()
+      service.setVerificationStatus = jest
+        .fn()
         .mockImplementation(
-        (id, status, userId, notes) => {
-          tenant.verification.verificationStatus = status;
-          tenant.verification.verifiedById = userId;
-          tenant.verification.verificationNotes = notes;
-          if (status === VerificationStatus.VERIFIED) {
-            tenant.verification.verificationDate = new Date();
-          }
-          return Promise.resolve(tenant);
-        },
-      );
+          (
+            id: string,
+            status: VerificationStatus,
+            userId?: string,
+            notes?: string,
+          ) => {
+            // Type-safe assignments for verification properties
+            if (tenant.verification) {
+              // Set verification properties
+              tenant.verification.verificationStatus = status;
+              tenant.verification.verifiedById = userId;
+              tenant.verification.verificationNotes = notes;
+              if (status === VerificationStatus.VERIFIED) {
+                tenant.verification.verificationDate = new Date();
+              }
+            }
+            return Promise.resolve(tenant);
+          },
+        );
 
       // Test finding the tenant
       const result = await service.findById('test-tenant-id');
@@ -203,8 +221,13 @@ describe('Tenant Embedded Entities Integration', () => {
       // Verify the initial state
       expect(result).toBeDefined();
       expect(result.verification).toBeDefined();
-      expect(result.verification.verificationStatus).toBe(VerificationStatus.PENDING);
-      expect(result.verification.getVerificationDocuments()).toEqual(['doc-001', 'doc-002']);
+      expect(result.verification.verificationStatus).toBe(
+        VerificationStatus.PENDING,
+      );
+      expect(result.verification.getVerificationDocuments()).toEqual([
+        'doc-001',
+        'doc-002',
+      ]);
       expect(result.verification.isVerificationComplete()).toBe(false);
 
       // Test updating verification status
@@ -216,9 +239,13 @@ describe('Tenant Embedded Entities Integration', () => {
       );
 
       // Verify the updated state
-      expect(updatedTenant.verification.verificationStatus).toBe(VerificationStatus.VERIFIED);
+      expect(updatedTenant.verification.verificationStatus).toBe(
+        VerificationStatus.VERIFIED,
+      );
       expect(updatedTenant.verification.verifiedById).toBe('admin-user-id');
-      expect(updatedTenant.verification.verificationNotes).toBe('All documents verified');
+      expect(updatedTenant.verification.verificationNotes).toBe(
+        'All documents verified',
+      );
       expect(updatedTenant.verification.isVerificationComplete()).toBe(true);
     });
 
@@ -228,19 +255,20 @@ describe('Tenant Embedded Entities Integration', () => {
       tenant.id = 'test-tenant-id';
       tenant.name = 'Test Tenant';
       tenant.status = TenantStatus.PENDING;
-      tenant.setStatus = jest.fn().mockImplementation(function(status) {
+      tenant.setStatus = jest.fn().mockImplementation(function (
+        this: Tenant,
+        status: TenantStatus,
+      ) {
         this.status = status;
         return this;
       });
 
       // Mock the repository responses
       tenantRepository.findById.mockResolvedValue(tenant);
-      tenantRepository.setStatus.mockImplementation(
-        (id, status) => {
-          tenant.status = status;
-          return Promise.resolve(tenant);
-        },
-      );
+      tenantRepository.setStatus.mockImplementation((id, status) => {
+        tenant.status = status;
+        return Promise.resolve(tenant);
+      });
 
       // Test finding the tenant
       const result = await service.findById('test-tenant-id');

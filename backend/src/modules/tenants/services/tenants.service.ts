@@ -121,7 +121,7 @@ export class TenantsService {
       isActive: tenant.isActive,
       status: tenant.status,
       identifier: tenant.identifier,
-      foundedDate: tenant.foundedDate,
+      foundedDate: tenant.business?.foundedDate,
       business: tenant.business,
       registration: tenant.registration,
       verification: tenant.verification,
@@ -346,6 +346,10 @@ export class TenantsService {
       if (!tenant.verification) {
         tenant.verification = {
           verificationStatus: VerificationStatus.PENDING,
+          verificationAttempted: false,
+          getVerificationDocuments: () => [],
+          addVerificationDocument: () => {},
+          isVerificationComplete: () => false,
         };
       }
 

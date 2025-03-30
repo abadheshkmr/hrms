@@ -178,6 +178,10 @@ export class TenantRepository extends GenericRepository<Tenant> {
     if (!tenant.verification) {
       tenant.verification = {
         verificationStatus: VerificationStatus.PENDING,
+        verificationAttempted: false,
+        getVerificationDocuments: () => [],
+        addVerificationDocument: () => {},
+        isVerificationComplete: () => false,
       };
     }
 

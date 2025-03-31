@@ -10,6 +10,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantContextService } from '../../modules/tenants/services/tenant-context.service';
 import { TenantBaseEntity } from '../entities/tenant-base.entity';
 import { GenericRepository } from './generic.repository';
+import { PaginatedResult, PaginationOptions } from '../types/pagination.types';
 
 /**
  * Exception thrown when attempting to access tenant-specific data without a tenant context
@@ -188,13 +189,12 @@ export class TenantAwareRepository<T extends TenantBaseEntity> extends GenericRe
    * @param limit - Number of items per page
    * @returns Promise with paginated result for the current tenant
    */
-  async findPaginated(
+  async findWithPagination(
     options?: FindManyOptions<T>,
-    page = 1,
-    limit = 10,
-  ): Promise<{ items: T[]; total: number; page: number; limit: number; pages: number }> {
+    paginationOptions?: PaginationOptions,
+  ): Promise<PaginatedResult<T>> {
     const tenantOptions = this.applyTenantFilter(options || {});
-    return super.findPaginated(tenantOptions, page, limit);
+    return super.findWithPagination(tenantOptions, paginationOptions);
   }
 
   /**
@@ -214,13 +214,12 @@ export class TenantAwareRepository<T extends TenantBaseEntity> extends GenericRe
    * @param limit - Number of items per page
    * @returns Promise with paginated result across all tenants
    */
-  async findPaginatedAcrossTenants(
+  async findWithPaginationAcrossTenants(
     options?: FindManyOptions<T>,
-    page = 1,
-    limit = 10,
-  ): Promise<{ items: T[]; total: number; page: number; limit: number; pages: number }> {
+    paginationOptions?: PaginationOptions,
+  ): Promise<PaginatedResult<T>> {
     // Skip tenant filtering for this specific query
-    return super.findPaginated(options, page, limit);
+    return super.findWithPagination(options, paginationOptions);
   }
 
   /**

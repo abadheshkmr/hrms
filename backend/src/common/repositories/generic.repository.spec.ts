@@ -161,7 +161,7 @@ describe('GenericRepository', () => {
 
       // Act & Assert
       await expect(genericRepository.update(id, { name: 'Updated' })).rejects.toThrow(
-        `Entity with ID ${id} not found`,
+        `TestEntity with id ${id} not found`,
       );
     });
   });
@@ -227,7 +227,9 @@ describe('GenericRepository', () => {
       jest.spyOn(genericRepository, 'findById').mockResolvedValue(null);
 
       // Act & Assert
-      await expect(genericRepository.remove(id)).rejects.toThrow(`Entity with ID ${id} not found`);
+      await expect(genericRepository.remove(id)).rejects.toThrow(
+        `TestEntity with id ${id} not found`,
+      );
     });
   });
 

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { PaginationOptions, PaginatedResult } from '../../../common/types/pagination.types';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
@@ -56,31 +57,56 @@ export class TenantsService {
   }
 
   /**
-   * Find all active tenants
-   * @returns Promise with array of tenants
+   * Find all active tenants with pagination support
+   * @param paginationOptions - Optional pagination options
+   * @returns Promise with paginated tenants
    */
-  async findAll(): Promise<Tenant[]> {
-    return this.tenantRepository.find({
-      where: { isDeleted: false },
-    });
+  async findAll(paginationOptions?: PaginationOptions): Promise<PaginatedResult<Tenant>> {
+    return this.tenantRepository.findWithPagination(
+      {
+        where: { isDeleted: false },
+      },
+      paginationOptions,
+    );
   }
 
   /**
-   * Find tenants by status
-   * @param status - TenantStatus enum value
-   * @returns Promise with array of tenants
+   * Find tenants by status with pagination support
+   * @param status - Tenant status to filter by
+   * @param paginationOptions - Optional pagination options
+   * @returns Promise with paginated tenants with matching status
    */
-  async findByStatus(status: TenantStatus): Promise<Tenant[]> {
-    return this.tenantRepository.findByStatus(status);
+  async findByStatus(
+    status: TenantStatus,
+    paginationOptions?: PaginationOptions,
+  ): Promise<PaginatedResult<Tenant>> {
+    return this.tenantRepository.findByStatus(status, paginationOptions);
   }
 
   /**
-   * Find tenants by verification status
-   * @param verificationStatus - VerificationStatus enum value
-   * @returns Promise with array of tenants
+   * Find tenants by verification status with pagination support
+   * @param status - Verification status to filter by
+   * @param paginationOptions - Optional pagination options
+   * @returns Promise with paginated tenants with matching verification status
    */
-  async findByVerificationStatus(verificationStatus: VerificationStatus): Promise<Tenant[]> {
-    return this.tenantRepository.findByVerificationStatus(verificationStatus);
+  async findByVerificationStatus(
+    status: VerificationStatus,
+    paginationOptions?: PaginationOptions,
+  ): Promise<PaginatedResult<Tenant>> {
+    return this.tenantRepository.findByVerificationStatus(status, paginationOptions);
+  }
+
+  /**
+   * Advanced search for tenants with multiple criteria and pagination
+   * @param criteria - Object with search criteria (name, industry, status, etc.)
+   * @param paginationOptions - Optional pagination options
+   * @returns Promise with paginated tenants matching criteria
+   */
+  async advancedSearch(
+    criteria: Record<string, any>,
+    paginationOptions?: PaginationOptions,
+  ): Promise<PaginatedResult<Tenant>> {
+    return this.tenantRepository.advancedSearch(criteria, paginationOptions);
   }
 
   /**
@@ -161,12 +187,16 @@ export class TenantsService {
   }
 
   /**
-   * Search tenants by name or legal name
+   * Search tenants by name or legal name with pagination support
    * @param searchTerm - Text to search for
-   * @returns Promise with array of matching tenants
+   * @param paginationOptions - Optional pagination options
+   * @returns Promise with paginated matching tenants
    */
-  async searchByName(searchTerm: string): Promise<Tenant[]> {
-    return this.tenantRepository.searchByName(searchTerm);
+  async searchByName(
+    searchTerm: string,
+    paginationOptions?: PaginationOptions,
+  ): Promise<PaginatedResult<Tenant>> {
+    return this.tenantRepository.searchByName(searchTerm, paginationOptions);
   }
 
   /**

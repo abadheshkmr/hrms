@@ -38,7 +38,7 @@ describe('Embedded Tenant Entities', () => {
 
       const errors = await validate(businessInfo);
       expect(errors).toHaveLength(2);
-      
+
       const propertyErrors = errors.map((err) => err.property);
       expect(propertyErrors).toContain('industry');
       expect(propertyErrors).toContain('description');
@@ -73,9 +73,9 @@ describe('Embedded Tenant Entities', () => {
     it('should check if registration is complete', () => {
       const completeRegistration = new RegistrationInfo();
       completeRegistration.cinNumber = 'U72200TN2021PTC141323';
-      
+
       const incompleteRegistration = new RegistrationInfo();
-      
+
       expect(completeRegistration.isRegistrationComplete()).toBe(true);
       expect(incompleteRegistration.isRegistrationComplete()).toBe(false);
     });
@@ -84,7 +84,7 @@ describe('Embedded Tenant Entities', () => {
       const registrationInfo = new RegistrationInfo();
       registrationInfo.panNumber = 'aaapl1234c'; // lowercase
       registrationInfo.gstNumber = '33aaapl1234c1z5'; // lowercase
-      
+
       expect(registrationInfo.getFormattedRegistrationNumber('PAN')).toBe(
         'AAAPL1234C',
       );
@@ -106,16 +106,19 @@ describe('Embedded Tenant Entities', () => {
 
     it('should manage verification documents correctly', () => {
       const verificationInfo = new VerificationInfo();
-      
+
       // Initially empty
       expect(verificationInfo.getVerificationDocuments()).toEqual([]);
-      
+
       // Add documents
       verificationInfo.addVerificationDocument('doc-001');
       verificationInfo.addVerificationDocument('doc-002');
-      
-      expect(verificationInfo.getVerificationDocuments()).toEqual(['doc-001', 'doc-002']);
-      
+
+      expect(verificationInfo.getVerificationDocuments()).toEqual([
+        'doc-001',
+        'doc-002',
+      ]);
+
       // No duplicates
       verificationInfo.addVerificationDocument('doc-001');
       expect(verificationInfo.getVerificationDocuments()).toEqual([
@@ -127,10 +130,10 @@ describe('Embedded Tenant Entities', () => {
     it('should properly check verification completion', () => {
       const pendingVerification = new VerificationInfo();
       pendingVerification.verificationStatus = VerificationStatus.PENDING;
-      
+
       const verifiedVerification = new VerificationInfo();
       verifiedVerification.verificationStatus = VerificationStatus.VERIFIED;
-      
+
       expect(pendingVerification.isVerificationComplete()).toBe(false);
       expect(verifiedVerification.isVerificationComplete()).toBe(true);
     });
@@ -144,7 +147,7 @@ describe('Embedded Tenant Entities', () => {
 
       const errors = await validate(verificationInfo);
       expect(errors.length).toBeGreaterThan(0);
-      
+
       const propertyErrors = errors.map((err) => err.property);
       expect(propertyErrors).toContain('verificationStatus');
       expect(propertyErrors).toContain('verifiedById');

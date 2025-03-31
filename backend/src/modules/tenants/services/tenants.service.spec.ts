@@ -26,6 +26,7 @@ type MockTenantRepository = {
   findByStatus: jest.Mock;
   findByVerificationStatus: jest.Mock;
   searchByName: jest.Mock;
+  findWithPagination: jest.Mock;
   create: jest.Mock;
   save: jest.Mock;
   update: jest.Mock;
@@ -60,6 +61,7 @@ const createMockTenantRepository = (): MockTenantRepository => ({
   findByStatus: jest.fn(),
   findByVerificationStatus: jest.fn(),
   searchByName: jest.fn(),
+  findWithPagination: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
@@ -138,14 +140,25 @@ describe('TenantsService', () => {
 
   describe('findAll', () => {
     it('should return an array of tenants', async () => {
-      const expectedTenants = [{ id: '1', name: 'Test Tenant' }];
-      tenantRepository.find.mockResolvedValue(expectedTenants);
+      const expectedResult = {
+        items: [{ id: '1', name: 'Test Tenant' }],
+        total: 1,
+        page: 1,
+        limit: 10,
+        pages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      };
+      tenantRepository.findWithPagination.mockResolvedValue(expectedResult);
 
       const result = await service.findAll();
-      expect(result).toEqual(expectedTenants);
-      expect(tenantRepository.find).toHaveBeenCalledWith({
-        where: { isDeleted: false },
-      });
+      expect(result).toEqual(expectedResult);
+      expect(tenantRepository.findWithPagination).toHaveBeenCalledWith(
+        {
+          where: { isDeleted: false },
+        },
+        undefined,
+      );
     });
   });
 
@@ -156,7 +169,7 @@ describe('TenantsService', () => {
 
       const result = await service.findByStatus(TenantStatus.ACTIVE);
       expect(result).toEqual(expectedTenants);
-      expect(tenantRepository.findByStatus).toHaveBeenCalledWith(TenantStatus.ACTIVE);
+      expect(tenantRepository.findByStatus).toHaveBeenCalledWith(TenantStatus.ACTIVE, undefined);
     });
   });
 
@@ -171,6 +184,7 @@ describe('TenantsService', () => {
       expect(result).toEqual(expectedTenants);
       expect(tenantRepository.findByVerificationStatus).toHaveBeenCalledWith(
         VerificationStatus.VERIFIED,
+        undefined,
       );
     });
   });

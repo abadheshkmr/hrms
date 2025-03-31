@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException, ConflictException } from '@nestjs/common';
 import { PaginationOptions, PaginatedResult } from '../../../common/types/pagination.types';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
@@ -194,68 +194,192 @@ export class TenantsService {
    * @param createTenantDto - DTO with tenant data
    * @returns Promise with created tenant
    */
-  async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
-    // Extract embedded entity fields from the DTO
-    const { businessType, businessScale, gstNumber, panNumber, primaryEmail, ...restOfDto } = createTenantDto;
+  /**
+   * Sanitize string inputs by trimming whitespace
+   * @param dto - Any data transfer object
+   * @returns The sanitized object with trimmed string fields
+   */
+  private sanitizeStringInputs<T>(dto: T): T {
+    if (!dto || typeof dto !== 'object') return dto;
 
-    // Execute the tenant creation in a transaction
-    const savedTenant = await this.executeInTransaction(async (queryRunner) => {
-      // Create new tenant entity
-      const tenant = new Tenant();
+    const sanitized = { ...dto } as any;
 
-      // Set basic properties
-      Object.assign(tenant, {
-        ...restOfDto,
-        subdomain: restOfDto.subdomain?.toLowerCase(),
-        status: TenantStatus.PENDING,
-        isActive: true,
-        tenantId: null, // Explicitly set to null since a tenant doesn't belong to another tenant
-      });
+    // Loop through all properties of the object
+    Object.keys(sanitized).forEach((key) => {
+      const value = sanitized[key];
 
-      // Set embedded business info if provided
-      if (businessType || businessScale) {
-        // Create BusinessInfo instance rather than plain object
-        const business = new BusinessInfo();
-        business.businessType = businessType || BusinessType.OTHER;
-        business.businessScale = businessScale || BusinessScale.SMALL;
-        business.industry = 'OTHER'; // Default value
-        tenant.business = business;
+      // Trim string values
+      if (typeof value === 'string') {
+        sanitized[key] = value.trim();
+      } 
+      // Recursively sanitize nested objects, but not arrays or null values
+      else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        sanitized[key] = this.sanitizeStringInputs(value);
       }
-
-      // Set embedded registration info if provided
-      if (gstNumber || panNumber) {
-        // Create RegistrationInfo instance rather than plain object
-        const registration = new RegistrationInfo();
-        registration.gstNumber = gstNumber;
-        registration.panNumber = panNumber;
-        tenant.registration = registration;
-      }
-
-      // Set embedded contact details if provided
-      if (primaryEmail) {
-        // Create ContactDetails instance rather than plain object
-        const contactDetails = new ContactDetails();
-        contactDetails.primaryEmail = primaryEmail;
-        tenant.contact = contactDetails;
-      }
-
-      // Set embedded verification info
-      // Create VerificationInfo instance rather than plain object
-      const verification = new VerificationInfo();
-      verification.verificationStatus = VerificationStatus.PENDING;
-      verification.verificationAttempted = false;
-      tenant.verification = verification;
-
-      // Save the tenant using the entity manager
-      return await queryRunner.manager.save(tenant);
     });
 
-    if (!savedTenant) {
-      throw new InternalServerErrorException('Failed to create tenant');
+    return sanitized as T;
+  }
+
+  async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
+    try {
+      // Sanitize input by trimming whitespace from all string fields
+      const sanitizedDto = this.sanitizeStringInputs(createTenantDto);
+      
+      // Extract embedded entity fields from the DTO
+      const { businessType, businessScale, gstNumber, panNumber, primaryEmail, ...restOfDto } = sanitizedDto;
+
+      // Check for duplicate name, subdomain, or identifier before creating
+      await this.checkForDuplicates(sanitizedDto);
+
+      // Execute the tenant creation in a transaction
+      const savedTenant = await this.executeInTransaction(async (queryRunner) => {
+        // Create new tenant entity
+        const tenant = new Tenant();
+
+        // Set basic properties
+        Object.assign(tenant, {
+          ...restOfDto,
+          subdomain: restOfDto.subdomain?.toLowerCase(),
+          status: TenantStatus.PENDING,
+          isActive: true,
+          tenantId: null, // Explicitly set to null since a tenant doesn't belong to another tenant
+        });
+
+        // Set embedded business info if provided
+        if (businessType || businessScale) {
+          // Create BusinessInfo instance rather than plain object
+          const business = new BusinessInfo();
+          business.businessType = businessType || BusinessType.OTHER;
+          business.businessScale = businessScale || BusinessScale.SMALL;
+          business.industry = 'OTHER'; // Default value
+          tenant.business = business;
+        }
+
+        // Set embedded registration info if provided
+        if (gstNumber || panNumber) {
+          // Create RegistrationInfo instance rather than plain object
+          const registration = new RegistrationInfo();
+          registration.gstNumber = gstNumber;
+          registration.panNumber = panNumber;
+          tenant.registration = registration;
+        }
+
+        // Set embedded contact details if provided
+        if (primaryEmail) {
+          // Create ContactDetails instance rather than plain object
+          const contactDetails = new ContactDetails();
+          contactDetails.primaryEmail = primaryEmail;
+          tenant.contact = contactDetails;
+        }
+
+        // Set embedded verification info
+        // Create VerificationInfo instance rather than plain object
+        const verification = new VerificationInfo();
+        verification.verificationStatus = VerificationStatus.PENDING;
+        verification.verificationAttempted = false;
+        tenant.verification = verification;
+
+        // Save the tenant using the entity manager
+        return await queryRunner.manager.save(tenant);
+      });
+
+      if (!savedTenant) {
+        throw new InternalServerErrorException('Failed to create tenant');
+      }
+
+      // Create and publish event data
+      const eventData = this.prepareTenantDataForEvent(savedTenant);
+      await this.eventsService.publishTenantCreated(eventData);
+
+      return savedTenant;
+    } catch (error: unknown) {
+      // Handle unique constraint errors
+      if (this.isPostgresUniqueViolationError(error)) {
+        // Extract field name from error detail
+        const field = this.extractFieldFromErrorMessage(this.getErrorDetail(error));
+        throw new ConflictException(`A tenant with this ${field} already exists`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Check for duplicates before tenant creation
+   * @param dto - Tenant DTO to check for duplicates
+   */
+  private async checkForDuplicates(dto: CreateTenantDto): Promise<void> {
+    const { subdomain, name, identifier } = dto;
+
+    if (subdomain) {
+      const existingBySubdomain = await this.tenantRepository.findOne({ where: { subdomain } });
+      if (existingBySubdomain) {
+        throw new ConflictException(`A tenant with subdomain '${subdomain}' already exists`);
+      }
     }
 
-    // Prepare tenant data for event with proper typing
-    const tenantData: TenantData = {
+    if (name) {
+      const existingByName = await this.tenantRepository.findOne({ where: { name } });
+      if (existingByName) {
+        throw new ConflictException(`A tenant with name '${name}' already exists`);
+      }
+    }
+
+    if (identifier) {
+      const existingByIdentifier = await this.tenantRepository.findOne({ where: { identifier } });
+      if (existingByIdentifier) {
+        throw new ConflictException(`A tenant with identifier '${identifier}' already exists`);
+      }
+    }
+  }
+
+  /**
+   * Extract field name from PostgreSQL error message
+   * @param errorDetail - Error detail message from PostgreSQL
+   * @returns Field name that caused the error
+   */
+  /**
+   * Type guard to check if an error is a Postgres unique violation error
+   * @param error - The error to check
+   * @returns Whether the error is a Postgres unique violation error
+   */
+  private isPostgresUniqueViolationError(error: unknown): boolean {
+    return (
+      error !== null && typeof error === 'object' && 'code' in error && typeof error.code === 'string' && error.code === '23505' && 'detail' in error
+    );
+  }
+
+  /**
+   * Get the error detail from a Postgres error
+   * @param error - The error object
+   * @returns The error detail string
+   */
+  private getErrorDetail(error: unknown): string {
+    if (error !== null && typeof error === 'object' && 'detail' in error && typeof error.detail === 'string') {
+      return error.detail;
+    }
+    return '';
+  }
+
+  /**
+   * Extract field name from PostgreSQL error message detail
+   * @param errorDetail - Error detail message from PostgreSQL
+   * @returns Field name that caused the error
+   */
+  private extractFieldFromErrorMessage(errorDetail: string): string {
+    if (!errorDetail) return 'value';
+    // Example format: 'Key (subdomain)=(xyz) already exists.'
+    const match = errorDetail.match(/Key \(([^)]+)\)=/i);
+    return match ? match[1] : 'value';
+  }
+
+  /**
+   * Prepare tenant data for event publishing
+   * @param savedTenant - The saved tenant entity
+   * @returns Structured tenant data for events
+   */
+  private prepareTenantDataForEvent(savedTenant: Tenant): TenantData {
+    return {
       id: savedTenant.id,
       name: savedTenant.name,
       domain: savedTenant.subdomain,
@@ -263,11 +387,6 @@ export class TenantsService {
       createdAt: savedTenant.createdAt,
       updatedAt: savedTenant.updatedAt,
     };
-
-    // Publish event for tenant creation (outside transaction)
-    await this.eventsService.publishTenantCreated(tenantData);
-
-    return savedTenant;
   }
 
   async addAddressToTenant(tenantId: string, addressDto: AddressDto): Promise<Address> {
@@ -329,9 +448,12 @@ export class TenantsService {
   async update(id: string, updateTenantDto: UpdateTenantDto): Promise<Tenant> {
     const tenant = await this.findById(id);
 
+    // Sanitize input by trimming whitespace from all string fields
+    const sanitizedDto = this.sanitizeStringInputs(updateTenantDto);
+
     // Execute the tenant update in a transaction
     const updatedTenant = await this.executeInTransaction(async (queryRunner) => {
-      Object.assign(tenant, updateTenantDto);
+      Object.assign(tenant, sanitizedDto);
 
       // Ensure tenantId remains null for Tenant entities
       tenant.tenantId = null;
@@ -339,18 +461,9 @@ export class TenantsService {
       return await queryRunner.manager.save(tenant);
     });
 
-    // Prepare tenant data for event with proper typing
-    const tenantData: TenantData = {
-      id: updatedTenant.id,
-      name: updatedTenant.name,
-      domain: updatedTenant.subdomain,
-      status: updatedTenant.isActive ? 'active' : 'inactive',
-      createdAt: updatedTenant.createdAt,
-      updatedAt: updatedTenant.updatedAt,
-    };
-
-    // Publish event for tenant update (outside transaction)
-    await this.eventsService.publishTenantUpdated(tenantData);
+    // Create and publish event data
+    const eventData = this.prepareTenantDataForEvent(updatedTenant);
+    await this.eventsService.publishTenantUpdated(eventData);
 
     return updatedTenant;
   }
@@ -367,18 +480,9 @@ export class TenantsService {
       throw new NotFoundException(`Tenant with ID ${id} not found`);
     }
 
-    // Prepare tenant data for event with proper typing
-    const tenantData: TenantData = {
-      id: updatedTenant.id,
-      name: updatedTenant.name,
-      domain: updatedTenant.subdomain,
-      status: updatedTenant.isActive ? 'active' : 'inactive',
-      createdAt: updatedTenant.createdAt,
-      updatedAt: updatedTenant.updatedAt,
-    };
-
-    // Publish event for tenant update
-    await this.eventsService.publishTenantUpdated(tenantData);
+    // Create and publish event data
+    const eventData = this.prepareTenantDataForEvent(updatedTenant);
+    await this.eventsService.publishTenantUpdated(eventData);
 
     return updatedTenant;
   }

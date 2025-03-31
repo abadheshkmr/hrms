@@ -145,6 +145,65 @@ describe('TenantValidationService', () => {
     });
   });
 
+  describe('Caching Functionality', () => {
+    beforeEach(() => {
+      jest.spyOn(service as any, 'getFromCache').mockImplementation(() => null);
+      jest.spyOn(service as any, 'setInCache').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should use cache for repeated tenant validation calls', async () => {
+      // Arrange
+      const getCacheSpy = jest.spyOn(service as any, 'getFromCache');
+      const setCacheSpy = jest.spyOn(service as any, 'setInCache');
+
+      // First call should check cache and then hit the database
+      await service.validateTenantActive(TEST_TENANT_ID);
+
+      // Set up cache hit for second call
+      getCacheSpy.mockReturnValueOnce({ isActive: true });
+
+      // Act - second call should use cache
+      await service.validateTenantActive(TEST_TENANT_ID);
+
+      // Assert
+      expect(getCacheSpy).toHaveBeenCalledTimes(2);
+      expect(setCacheSpy).toHaveBeenCalledTimes(1);
+      expect(tenantsService.findById).toHaveBeenCalledTimes(1); // Database only called once
+    });
+
+    it('should respect cache TTL settings', async () => {
+      // Arrange
+      const setCacheSpy = jest.spyOn(service as any, 'setInCache');
+
+      // Act
+      await service.validateTenantActive(TEST_TENANT_ID);
+
+      // Assert
+      expect(setCacheSpy).toHaveBeenCalledWith(
+        expect.stringContaining(TEST_TENANT_ID),
+        expect.objectContaining({ isActive: true }),
+        expect.any(Number), // TTL value
+      );
+    });
+
+    it('should bypass cache when forced', async () => {
+      // Arrange
+      const getCacheSpy = jest.spyOn(service as any, 'getFromCache');
+      getCacheSpy.mockReturnValueOnce({ isActive: true }); // Cache would hit if used
+
+      // Act
+      await service.validateTenantActive(TEST_TENANT_ID, true); // Force bypass
+
+      // Assert
+      expect(getCacheSpy).not.toHaveBeenCalled();
+      expect(tenantsService.findById).toHaveBeenCalledTimes(1); // Database called
+    });
+  });
+
   describe('Edge Cases - Subdomain Validation', () => {
     let tenantRepository: { findBySubdomain: jest.Mock };
     // Define a type for the extended service with the mock method

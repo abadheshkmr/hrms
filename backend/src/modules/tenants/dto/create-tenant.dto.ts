@@ -26,6 +26,7 @@ export class CreateTenantDto {
   })
   @IsNotEmpty()
   @IsString()
+  @MaxLength(100, { message: 'Name cannot exceed 100 characters' })
   name: string;
 
   @ApiProperty({
@@ -38,6 +39,7 @@ export class CreateTenantDto {
   @Matches(/^[a-z0-9-]+$/, {
     message: 'Subdomain can only contain lowercase letters, numbers, and hyphens',
   })
+  @MaxLength(63, { message: 'Subdomain cannot exceed 63 characters (DNS limitation)' })
   subdomain: string;
 
   @ApiProperty({
@@ -46,6 +48,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(200, { message: 'Legal name cannot exceed 200 characters' })
   legalName?: string;
 
   @ApiProperty({
@@ -72,6 +75,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(15, { message: 'GST number cannot exceed 15 characters' })
   gstNumber?: string;
 
   @ApiProperty({
@@ -80,6 +84,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(10, { message: 'PAN number cannot exceed 10 characters' })
   panNumber?: string;
 
   @ApiProperty({
@@ -105,6 +110,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(20, { message: 'Primary phone cannot exceed 20 characters' })
   primaryPhone?: string;
 
   @ApiProperty({
@@ -124,6 +130,7 @@ export class CreateTenantDto {
   @Matches(/^[a-z0-9-]+$/, {
     message: 'Identifier can only contain lowercase letters, numbers, and hyphens',
   })
+  @MaxLength(50, { message: 'Identifier cannot exceed 50 characters' })
   identifier?: string;
 
   @ApiProperty({
@@ -140,7 +147,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(1000)
+  @MaxLength(1000, { message: 'Description cannot exceed 1000 characters' })
   description?: string;
 
   @ApiProperty({
@@ -149,6 +156,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(10, { message: 'TAN number cannot exceed 10 characters' })
   tanNumber?: string;
 
   @ApiProperty({
@@ -157,6 +165,7 @@ export class CreateTenantDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(20, { message: 'MSME number cannot exceed 20 characters' })
   msmeNumber?: string;
 
   @ApiProperty({

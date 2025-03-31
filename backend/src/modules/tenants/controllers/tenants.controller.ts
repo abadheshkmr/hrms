@@ -8,16 +8,19 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { TenantsService } from '../services/tenants.service';
 import { Tenant } from '../entities/tenant.entity';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { PaginationOptions, PaginatedResult } from '../../../common/types/pagination.types';
 import { Address } from '../../../common/entities/address.entity';
 import { ContactInfo } from '../../../common/entities/contact-info.entity';
 import { AddressDto } from '../../../common/dto/address.dto';
 import { ContactInfoDto } from '../../../common/dto/contact-info.dto';
+import { TenantStatus, VerificationStatus } from '../enums/tenant.enums';
 
 @ApiTags('tenants')
 @Controller('tenants')
@@ -27,11 +30,54 @@ export class TenantsController {
   @Get()
   @ApiOperation({
     summary: 'Get all tenants',
-    description: 'Retrieves a list of all tenants in the system',
+    description: 'Retrieves a list of all tenants in the system with pagination support',
   })
-  @ApiResponse({ status: 200, description: 'Returns the list of tenants', type: [Tenant] })
-  findAll(): Promise<Tenant[]> {
-    return this.tenantsService.findAll();
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (1-based indexing)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated list of tenants',
+    schema: {
+      properties: {
+        items: { type: 'array', items: { $ref: 'Tenant' } },
+        meta: {
+          type: 'object',
+          properties: {
+            totalItems: { type: 'number' },
+            itemCount: { type: 'number' },
+            itemsPerPage: { type: 'number' },
+            totalPages: { type: 'number' },
+            currentPage: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<PaginatedResult<Tenant>> {
+    const paginationOptions: PaginationOptions = {};
+
+    if (page) {
+      paginationOptions.page = parseInt(page.toString(), 10);
+    }
+
+    if (limit) {
+      paginationOptions.take = parseInt(limit.toString(), 10);
+    }
+
+    return this.tenantsService.findAll(paginationOptions);
   }
 
   @Get(':id')
@@ -262,5 +308,265 @@ export class TenantsController {
   @ApiResponse({ status: 404, description: 'Contact information not found' })
   removeContactInfo(@Param('id') id: string): Promise<void> {
     return this.tenantsService.removeContactInfo(id);
+  }
+
+  // Status and search endpoints
+  @Get('status/:status')
+  @ApiOperation({
+    summary: 'Find tenants by status',
+    description: 'Retrieves a paginated list of tenants with a specific status',
+  })
+  @ApiParam({
+    name: 'status',
+    description: 'Tenant status',
+    enum: TenantStatus,
+    example: TenantStatus.ACTIVE,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (1-based indexing)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated list of tenants with the specified status',
+    schema: {
+      properties: {
+        items: { type: 'array', items: { $ref: 'Tenant' } },
+        meta: {
+          type: 'object',
+          properties: {
+            totalItems: { type: 'number' },
+            itemCount: { type: 'number' },
+            itemsPerPage: { type: 'number' },
+            totalPages: { type: 'number' },
+            currentPage: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  findByStatus(
+    @Param('status') status: TenantStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<PaginatedResult<Tenant>> {
+    const paginationOptions: PaginationOptions = {};
+
+    if (page) {
+      paginationOptions.page = parseInt(page.toString(), 10);
+    }
+
+    if (limit) {
+      paginationOptions.take = parseInt(limit.toString(), 10);
+    }
+
+    return this.tenantsService.findByStatus(status, paginationOptions);
+  }
+
+  @Get('verification/:status')
+  @ApiOperation({
+    summary: 'Find tenants by verification status',
+    description: 'Retrieves a paginated list of tenants with a specific verification status',
+  })
+  @ApiParam({
+    name: 'status',
+    description: 'Verification status',
+    enum: VerificationStatus,
+    example: VerificationStatus.PENDING,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (1-based indexing)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated list of tenants with the specified verification status',
+    schema: {
+      properties: {
+        items: { type: 'array', items: { $ref: 'Tenant' } },
+        meta: {
+          type: 'object',
+          properties: {
+            totalItems: { type: 'number' },
+            itemCount: { type: 'number' },
+            itemsPerPage: { type: 'number' },
+            totalPages: { type: 'number' },
+            currentPage: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  findByVerificationStatus(
+    @Param('status') status: VerificationStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<PaginatedResult<Tenant>> {
+    const paginationOptions: PaginationOptions = {};
+
+    if (page) {
+      paginationOptions.page = parseInt(page.toString(), 10);
+    }
+
+    if (limit) {
+      paginationOptions.take = parseInt(limit.toString(), 10);
+    }
+
+    return this.tenantsService.findByVerificationStatus(status, paginationOptions);
+  }
+
+  @Get('search')
+  @ApiOperation({
+    summary: 'Search tenants by name',
+    description: 'Searches for tenants by name with pagination support',
+  })
+  @ApiQuery({
+    name: 'name',
+    required: true,
+    type: String,
+    description: 'Tenant name to search for',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (1-based indexing)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated list of tenants matching the search criteria',
+    schema: {
+      properties: {
+        items: { type: 'array', items: { $ref: 'Tenant' } },
+        meta: {
+          type: 'object',
+          properties: {
+            totalItems: { type: 'number' },
+            itemCount: { type: 'number' },
+            itemsPerPage: { type: 'number' },
+            totalPages: { type: 'number' },
+            currentPage: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  searchByName(
+    @Query('name') name: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<PaginatedResult<Tenant>> {
+    const paginationOptions: PaginationOptions = {};
+
+    if (page) {
+      paginationOptions.page = parseInt(page.toString(), 10);
+    }
+
+    if (limit) {
+      paginationOptions.take = parseInt(limit.toString(), 10);
+    }
+
+    return this.tenantsService.searchByName(name, paginationOptions);
+  }
+
+  @Get('advanced-search')
+  @ApiOperation({
+    summary: 'Advanced tenant search',
+    description: 'Performs advanced search on tenants with multiple criteria and pagination',
+  })
+  @ApiQuery({ name: 'name', required: false, type: String, description: 'Tenant name' })
+  @ApiQuery({ name: 'industry', required: false, type: String, description: 'Industry type' })
+  @ApiQuery({ name: 'status', required: false, enum: TenantStatus, description: 'Tenant status' })
+  @ApiQuery({
+    name: 'verificationStatus',
+    required: false,
+    enum: VerificationStatus,
+    description: 'Verification status',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (1-based indexing)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated list of tenants matching search criteria',
+    schema: {
+      properties: {
+        items: { type: 'array', items: { $ref: 'Tenant' } },
+        meta: {
+          type: 'object',
+          properties: {
+            totalItems: { type: 'number' },
+            itemCount: { type: 'number' },
+            itemsPerPage: { type: 'number' },
+            totalPages: { type: 'number' },
+            currentPage: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  advancedSearch(
+    @Query('name') name?: string,
+    @Query('industry') industry?: string,
+    @Query('status') status?: TenantStatus,
+    @Query('verificationStatus') verificationStatus?: VerificationStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<PaginatedResult<Tenant>> {
+    // Define a properly typed search criteria object to avoid unsafe member access
+    const searchCriteria: Partial<{
+      name: string;
+      industry: string;
+      status: TenantStatus;
+      verificationStatus: VerificationStatus;
+    }> = {};
+
+    if (name) searchCriteria.name = name;
+    if (industry) searchCriteria.industry = industry;
+    if (status) searchCriteria.status = status;
+    if (verificationStatus) searchCriteria.verificationStatus = verificationStatus;
+
+    const paginationOptions: PaginationOptions = {};
+
+    if (page) {
+      paginationOptions.page = parseInt(page.toString(), 10);
+    }
+
+    if (limit) {
+      paginationOptions.take = parseInt(limit.toString(), 10);
+    }
+
+    return this.tenantsService.advancedSearch(searchCriteria, paginationOptions);
   }
 }

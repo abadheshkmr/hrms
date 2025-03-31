@@ -32,6 +32,14 @@ import { ContactInfo } from '../../../common/entities/contact-info.entity';
 @Index(['status', 'isActive'])
 @Index(['business.businessType', 'business.businessScale'])
 export class Tenant extends AuditBaseEntity {
+  constructor() {
+    super();
+    // Initialize embedded entities to prevent EntityMetadataNotFoundError
+    this.business = new BusinessInfo();
+    this.registration = new RegistrationInfo();
+    this.verification = new VerificationInfo();
+    this.contact = new ContactDetails();
+  }
   /**
    * Override the tenantId from BaseEntity to ensure it's always null for Tenant entities
    * A tenant doesn't belong to a tenant - it IS a tenant

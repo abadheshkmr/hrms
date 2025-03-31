@@ -3,7 +3,11 @@ import { PaginationOptions, PaginatedResult } from '../../../common/types/pagina
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
-import { TenantStatus, VerificationStatus } from '../enums/tenant.enums';
+import { TenantStatus, VerificationStatus, BusinessType, BusinessScale } from '../enums/tenant.enums';
+import { BusinessInfo } from '../entities/embedded/business-info.entity';
+import { RegistrationInfo } from '../entities/embedded/registration-info.entity';
+import { VerificationInfo } from '../entities/embedded/verification-info.entity';
+import { ContactDetails } from '../entities/embedded/contact-details.entity';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
 import { EventsService } from '../../../core/events/events.service';
@@ -24,7 +28,7 @@ export class TenantsService {
     @InjectRepository(ContactInfo)
     private contactInfoRepository: Repository<ContactInfo>,
     private readonly eventsService: EventsService,
-    private dataSource: DataSource,
+    private dataSource: DataSource
   ) {}
 
   /**
@@ -32,9 +36,7 @@ export class TenantsService {
    * @param operation - Function to execute within the transaction
    * @returns Promise with result of the operation
    */
-  private async executeInTransaction<T>(
-    operation: (queryRunner: QueryRunner) => Promise<T>,
-  ): Promise<T> {
+  private async executeInTransaction<T>(operation: (queryRunner: QueryRunner) => Promise<T>): Promise<T> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -66,7 +68,7 @@ export class TenantsService {
       {
         where: { isDeleted: false },
       },
-      paginationOptions,
+      paginationOptions
     );
   }
 
@@ -76,10 +78,7 @@ export class TenantsService {
    * @param paginationOptions - Optional pagination options
    * @returns Promise with paginated tenants with matching status
    */
-  async findByStatus(
-    status: TenantStatus,
-    paginationOptions?: PaginationOptions,
-  ): Promise<PaginatedResult<Tenant>> {
+  async findByStatus(status: TenantStatus, paginationOptions?: PaginationOptions): Promise<PaginatedResult<Tenant>> {
     return this.tenantRepository.findByStatus(status, paginationOptions);
   }
 
@@ -89,10 +88,7 @@ export class TenantsService {
    * @param paginationOptions - Optional pagination options
    * @returns Promise with paginated tenants with matching verification status
    */
-  async findByVerificationStatus(
-    status: VerificationStatus,
-    paginationOptions?: PaginationOptions,
-  ): Promise<PaginatedResult<Tenant>> {
+  async findByVerificationStatus(status: VerificationStatus, paginationOptions?: PaginationOptions): Promise<PaginatedResult<Tenant>> {
     return this.tenantRepository.findByVerificationStatus(status, paginationOptions);
   }
 
@@ -102,10 +98,7 @@ export class TenantsService {
    * @param paginationOptions - Optional pagination options
    * @returns Promise with paginated tenants matching criteria
    */
-  async advancedSearch(
-    criteria: Record<string, any>,
-    paginationOptions?: PaginationOptions,
-  ): Promise<PaginatedResult<Tenant>> {
+  async advancedSearch(criteria: Record<string, any>, paginationOptions?: PaginationOptions): Promise<PaginatedResult<Tenant>> {
     return this.tenantRepository.advancedSearch(criteria, paginationOptions);
   }
 
@@ -192,10 +185,7 @@ export class TenantsService {
    * @param paginationOptions - Optional pagination options
    * @returns Promise with paginated matching tenants
    */
-  async searchByName(
-    searchTerm: string,
-    paginationOptions?: PaginationOptions,
-  ): Promise<PaginatedResult<Tenant>> {
+  async searchByName(searchTerm: string, paginationOptions?: PaginationOptions): Promise<PaginatedResult<Tenant>> {
     return this.tenantRepository.searchByName(searchTerm, paginationOptions);
   }
 
@@ -205,21 +195,64 @@ export class TenantsService {
    * @returns Promise with created tenant
    */
   async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
+    // Extract embedded entity fields from the DTO
+    const { businessType, businessScale, gstNumber, panNumber, primaryEmail, ...restOfDto } = createTenantDto;
+
     // Execute the tenant creation in a transaction
     const savedTenant = await this.executeInTransaction(async (queryRunner) => {
-      // Create tenant with default status values
-      const tenant = this.tenantRepository.create({
-        ...createTenantDto,
+      // Create new tenant entity
+      const tenant = new Tenant();
+
+      // Set basic properties
+      Object.assign(tenant, {
+        ...restOfDto,
+        subdomain: restOfDto.subdomain?.toLowerCase(),
         status: TenantStatus.PENDING,
-        verification: {
-          verificationStatus: VerificationStatus.PENDING,
-        },
         isActive: true,
         tenantId: null, // Explicitly set to null since a tenant doesn't belong to another tenant
       });
 
+      // Set embedded business info if provided
+      if (businessType || businessScale) {
+        // Create BusinessInfo instance rather than plain object
+        const business = new BusinessInfo();
+        business.businessType = businessType || BusinessType.OTHER;
+        business.businessScale = businessScale || BusinessScale.SMALL;
+        business.industry = 'OTHER'; // Default value
+        tenant.business = business;
+      }
+
+      // Set embedded registration info if provided
+      if (gstNumber || panNumber) {
+        // Create RegistrationInfo instance rather than plain object
+        const registration = new RegistrationInfo();
+        registration.gstNumber = gstNumber;
+        registration.panNumber = panNumber;
+        tenant.registration = registration;
+      }
+
+      // Set embedded contact details if provided
+      if (primaryEmail) {
+        // Create ContactDetails instance rather than plain object
+        const contactDetails = new ContactDetails();
+        contactDetails.primaryEmail = primaryEmail;
+        tenant.contact = contactDetails;
+      }
+
+      // Set embedded verification info
+      // Create VerificationInfo instance rather than plain object
+      const verification = new VerificationInfo();
+      verification.verificationStatus = VerificationStatus.PENDING;
+      verification.verificationAttempted = false;
+      tenant.verification = verification;
+
+      // Save the tenant using the entity manager
       return await queryRunner.manager.save(tenant);
     });
+
+    if (!savedTenant) {
+      throw new InternalServerErrorException('Failed to create tenant');
+    }
 
     // Prepare tenant data for event with proper typing
     const tenantData: TenantData = {
@@ -262,10 +295,7 @@ export class TenantsService {
     });
   }
 
-  async addContactInfoToTenant(
-    tenantId: string,
-    contactInfoDto: ContactInfoDto,
-  ): Promise<ContactInfo> {
+  async addContactInfoToTenant(tenantId: string, contactInfoDto: ContactInfoDto): Promise<ContactInfo> {
     const tenant = await this.findById(tenantId);
 
     return this.executeInTransaction(async (queryRunner) => {
@@ -361,12 +391,7 @@ export class TenantsService {
    * @param verificationNotes - Optional notes about verification
    * @returns Promise with updated tenant
    */
-  async setVerificationStatus(
-    id: string,
-    verificationStatus: VerificationStatus,
-    verifiedById: string,
-    verificationNotes?: string,
-  ): Promise<Tenant> {
+  async setVerificationStatus(id: string, verificationStatus: VerificationStatus, verifiedById: string, verificationNotes?: string): Promise<Tenant> {
     // First check if tenant exists
     const tenant = await this.findById(id);
 
@@ -412,10 +437,7 @@ export class TenantsService {
     });
   }
 
-  async updateContactInfo(
-    contactInfoId: string,
-    contactInfoDto: ContactInfoDto,
-  ): Promise<ContactInfo> {
+  async updateContactInfo(contactInfoId: string, contactInfoDto: ContactInfoDto): Promise<ContactInfo> {
     const contactInfo = await this.contactInfoRepository.findOne({ where: { id: contactInfoId } });
 
     if (!contactInfo) {

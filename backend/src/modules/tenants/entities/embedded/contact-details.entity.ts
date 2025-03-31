@@ -18,15 +18,15 @@ export class ContactDetails {
     description: 'Primary email address for the tenant',
     example: 'contact@example.com',
   })
-  @Column()
-  primaryEmail: string;
+  @Column({ nullable: true })
+  primaryEmail?: string;
 
   @ApiProperty({
     description: 'Primary phone number for the tenant',
     example: '+91 9876543210',
   })
-  @Column()
-  primaryPhone: string;
+  @Column({ nullable: true })
+  primaryPhone?: string;
 
   @ApiProperty({
     description: 'Support email address for the tenant',

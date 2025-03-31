@@ -59,7 +59,7 @@ export abstract class BaseEntity {
   @IsOptional()
   @ValidateIf((o: BaseEntity) => o.tenantId !== null)
   @IsUUID(4)
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'uuid' })
   tenantId?: string | null;
 
   /**

@@ -4,6 +4,7 @@ import { TenantMetricsService } from '../services/tenant-metrics.service';
 import { Tenant } from '../entities/tenant.entity';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
+import { UpdateTenantStatusDto } from '../dto/update-tenant-status.dto';
 import { TenantMetricsDto, TenantConfigurationDto } from '../dto/tenant-metrics.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery, ApiHeader } from '@nestjs/swagger';
 import { PaginationOptions, PaginatedResult } from '../../../common/types/pagination.types';
@@ -602,6 +603,24 @@ export class TenantsController {
   @ApiResponse({ status: 404, description: 'Tenant not found' })
   async deactivateTenant(@Param('id') id: string): Promise<Tenant> {
     return this.tenantsService.deactivateTenant(id);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Update tenant status',
+    description: 'Updates the status of a tenant and records audit information',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiBody({ type: UpdateTenantStatusDto })
+  @ApiResponse({ status: 200, description: 'Status updated successfully', type: Tenant })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  @ApiResponse({ status: 400, description: 'Invalid status transition' })
+  async updateStatus(@Param('id') id: string, @Body() updateStatusDto: UpdateTenantStatusDto): Promise<Tenant> {
+    return await this.tenantsService.updateStatus(id, updateStatusDto);
   }
 
   @Get('advanced-search')

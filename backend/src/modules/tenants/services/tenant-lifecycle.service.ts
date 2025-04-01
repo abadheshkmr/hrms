@@ -205,23 +205,46 @@ export class TenantLifecycleService {
   }
 
   /**
-   * Generate audit trail for tenant deprovisioning
+   * Generate comprehensive audit trail for tenant operations
    * @param tenant - Tenant entity
    * @param queryRunner - Query runner for transaction
+   * @param operation - Operation type (create, update, delete, etc.)
+   * @param details - Additional operation details
    */
-  /* Transaction parameter pattern: QueryRunner is passed but not used directly */
+  /* Transaction parameter pattern: QueryRunner is passed for transaction context */
   private async generateAuditTrail(
     tenant: Tenant,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _queryRunner: unknown
+    _queryRunner: unknown,
+    operation: 'create' | 'update' | 'delete' | 'provision' | 'deprovision' | 'status_change' = 'deprovision',
+    details: Record<string, unknown> = {}
   ): Promise<void> {
-    this.logger.log(`Generating audit trail for tenant ${tenant.id}`);
+    this.logger.log(`Generating audit trail for tenant ${tenant.id} - Operation: ${operation}`);
 
-    // In an actual implementation, this would create comprehensive
-    // audit records of the deprovisioning process
-    // The queryRunner would be used to save audit records within the transaction
+    // Compile audit record with comprehensive details
+    const auditRecord = {
+      tenantId: tenant.id,
+      operation,
+      timestamp: new Date().toISOString(),
+      status: tenant.status,
+      actor: (details.actor as string) || 'system',
+      previousState: details.previousState || null,
+      newState: details.newState || null,
+      changes: details.changes || {},
+      metadata: {
+        ip: (details.ip as string) || null,
+        userAgent: (details.userAgent as string) || null,
+        reason: (details.reason as string) || null,
+      },
+    };
 
-    // For this example, we'll just simulate the operation
+    // Log the audit trail details for demonstration
+    this.logger.debug('Audit trail record created', { auditRecord });
+
+    // In a real implementation, this would store the audit record in the database
+    // using the provided queryRunner to ensure transaction integrity
+    // await queryRunner.manager.save(AuditLog, auditRecord);
+
+    // For this example, we just simulate the storage operation
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 }

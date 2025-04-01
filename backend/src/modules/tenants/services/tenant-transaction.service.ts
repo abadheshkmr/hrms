@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource, QueryRunner, IsolationLevel } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
+
+// Define isolation level type based on TypeORM supported values
+type IsolationLevel = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
 
 /**
  * Service for managing database transactions with various isolation levels
@@ -38,10 +41,7 @@ export class TenantTransactionService {
         });
 
         // Race between operation and timeout
-        const result = await Promise.race([
-          operation(queryRunner),
-          timeoutPromise
-        ]) as T;
+        const result = (await Promise.race([operation(queryRunner), timeoutPromise])) as T;
 
         await queryRunner.commitTransaction();
         return result;
@@ -72,9 +72,7 @@ export class TenantTransactionService {
    * @param operation - Function to execute
    * @returns Promise with result of the operation
    */
-  async executeConsistentRead<T>(
-    operation: (queryRunner: QueryRunner) => Promise<T>
-  ): Promise<T> {
+  async executeConsistentRead<T>(operation: (queryRunner: QueryRunner) => Promise<T>): Promise<T> {
     return this.executeInTransaction(operation, 'REPEATABLE READ');
   }
 
@@ -84,9 +82,7 @@ export class TenantTransactionService {
    * @param operation - Function to execute
    * @returns Promise with result of the operation
    */
-  async executeCriticalOperation<T>(
-    operation: (queryRunner: QueryRunner) => Promise<T>
-  ): Promise<T> {
+  async executeCriticalOperation<T>(operation: (queryRunner: QueryRunner) => Promise<T>): Promise<T> {
     return this.executeInTransaction(operation, 'SERIALIZABLE');
   }
 }

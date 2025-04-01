@@ -4,6 +4,11 @@ import { Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
 import { TenantMetricsDto, TenantConfigurationDto } from '../dto/tenant-metrics.dto';
 
+interface IdempotencyRecord {
+  expiry: number;
+  result: unknown;
+}
+
 /**
  * Service responsible for managing tenant metrics and configuration
  */
@@ -12,12 +17,12 @@ export class TenantMetricsService {
   private readonly logger = new Logger(TenantMetricsService.name);
   private readonly metricsCache = new Map<string, TenantMetricsDto>();
   private readonly configCache = new Map<string, Map<string, string>>();
-  private readonly idempotencyCache = new Map<string, any>();
+  private readonly idempotencyCache = new Map<string, IdempotencyRecord>();
   private readonly IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor(
     @InjectRepository(Tenant)
-    private readonly tenantRepository: Repository<Tenant>,
+    private readonly tenantRepository: Repository<Tenant>
   ) {}
 
   /**
@@ -25,10 +30,10 @@ export class TenantMetricsService {
    * @param key - Idempotency key
    * @param result - Operation result to cache
    */
-  storeIdempotencyResult(key: string, result: any): void {
+  storeIdempotencyResult(key: string, result: unknown): void {
     this.idempotencyCache.set(key, {
       result,
-      expiry: Date.now() + this.IDEMPOTENCY_TTL_MS
+      expiry: Date.now() + this.IDEMPOTENCY_TTL_MS,
     });
   }
 
@@ -37,16 +42,16 @@ export class TenantMetricsService {
    * @param key - Idempotency key
    * @returns Cached result or null if not found/expired
    */
-  getIdempotencyResult(key: string): any {
+  getIdempotencyResult(key: string): unknown {
     const cached = this.idempotencyCache.get(key);
     if (!cached) return null;
-    
+
     // Check if expired
     if (cached.expiry < Date.now()) {
       this.idempotencyCache.delete(key);
       return null;
     }
-    
+
     return cached.result;
   }
 
@@ -70,23 +75,17 @@ export class TenantMetricsService {
    * @param overwrite - Whether to overwrite existing metrics (default: merge)
    * @returns Updated metrics
    */
-  async updateTenantMetrics(
-    tenantId: string, 
-    metrics: TenantMetricsDto, 
-    overwrite = false
-  ): Promise<TenantMetricsDto> {
+  updateTenantMetrics(tenantId: string, metrics: TenantMetricsDto, overwrite = false): TenantMetricsDto {
     try {
       // Get existing metrics
       const existingMetrics = this.metricsCache.get(tenantId) || {};
-      
+
       // Update metrics based on mode
-      const updatedMetrics = overwrite 
-        ? { ...metrics } 
-        : { ...existingMetrics, ...metrics };
-      
+      const updatedMetrics = overwrite ? { ...metrics } : { ...existingMetrics, ...metrics };
+
       // Store in cache
       this.metricsCache.set(tenantId, updatedMetrics);
-      
+
       return updatedMetrics;
     } catch (error) {
       this.logger.error(`Failed to update metrics for tenant ${tenantId}`, error);
@@ -109,16 +108,16 @@ export class TenantMetricsService {
    * @param tenantId - ID of the tenant
    * @param increaseRequestCount - Number of requests to add (default: 1)
    */
-  async trackApiUsage(tenantId: string, increaseRequestCount = 1): Promise<void> {
+  trackApiUsage(tenantId: string, increaseRequestCount = 1): void {
     try {
       const metrics = this.metricsCache.get(tenantId) || {
-        totalApiRequests: 0
+        totalApiRequests: 0,
       };
-      
+
       // Update metrics
       metrics.totalApiRequests = (metrics.totalApiRequests || 0) + increaseRequestCount;
       metrics.lastActivityAt = new Date();
-      
+
       // Store updated metrics
       this.metricsCache.set(tenantId, metrics);
     } catch (error) {
@@ -136,16 +135,16 @@ export class TenantMetricsService {
     try {
       // For actual implementation, we would query various sources
       // This is a placeholder implementation that simulates gathering metrics
-      
+
       // Get tenant to ensure it exists and get status
-      const tenant = await this.tenantRepository.findOne({ 
-        where: { id: tenantId } 
+      const tenant = await this.tenantRepository.findOne({
+        where: { id: tenantId },
       });
-      
+
       if (!tenant) {
         throw new Error(`Tenant with ID ${tenantId} not found`);
       }
-      
+
       // Build metrics (in real implementation would get from actual sources)
       const metrics: TenantMetricsDto = {
         activeUsersCount: Math.floor(Math.random() * 100), // Simulated value
@@ -153,12 +152,12 @@ export class TenantMetricsService {
         avgRequestsPerDay: Math.floor(Math.random() * 500), // Simulated value
         storageUsageMb: Math.floor(Math.random() * 1000), // Simulated value
         lastActivityAt: new Date(),
-        status: tenant.status
+        status: tenant.status,
       };
-      
+
       // Store updated metrics
       this.metricsCache.set(tenantId, metrics);
-      
+
       return metrics;
     } catch (error) {
       this.logger.error(`Failed to recalculate metrics for tenant ${tenantId}`, error);
@@ -174,12 +173,12 @@ export class TenantMetricsService {
    */
   setTenantConfiguration(tenantId: string, key: string, value: string): void {
     let tenantConfig = this.configCache.get(tenantId);
-    
+
     if (!tenantConfig) {
       tenantConfig = new Map<string, string>();
       this.configCache.set(tenantId, tenantConfig);
     }
-    
+
     tenantConfig.set(key, value);
   }
 
@@ -203,11 +202,11 @@ export class TenantMetricsService {
    */
   getTenantConfiguration(tenantId: string, key: string, defaultValue = ''): string {
     const tenantConfig = this.configCache.get(tenantId);
-    
+
     if (!tenantConfig) {
       return defaultValue;
     }
-    
+
     return tenantConfig.get(key) || defaultValue;
   }
 
@@ -218,17 +217,17 @@ export class TenantMetricsService {
    */
   getAllTenantConfigurations(tenantId: string): Record<string, string> {
     const tenantConfig = this.configCache.get(tenantId);
-    
+
     if (!tenantConfig) {
       return {};
     }
-    
+
     // Convert Map to plain object
     const result: Record<string, string> = {};
     tenantConfig.forEach((value, key) => {
       result[key] = value;
     });
-    
+
     return result;
   }
 }

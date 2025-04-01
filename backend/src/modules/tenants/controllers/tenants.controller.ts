@@ -119,15 +119,15 @@ export class TenantsController {
   /**
    * Idempotent tenant creation endpoint
    * This endpoint allows for safe retries of tenant creation without risking duplicates.
-   * 
+   *
    * Use cases:
    * 1. Multi-step tenant onboarding flows where network issues might occur
    * 2. Integration with payment processing systems that use idempotency
    * 3. Third-party API clients that need reliable retry mechanisms
    * 4. Data migration and import tools that need to safely resume operations
-   * 
+   *
    * The client must provide a unique Idempotency-Key in the header.
-   * If the same key is used multiple times, only the first request will create 
+   * If the same key is used multiple times, only the first request will create
    * a tenant; subsequent requests will return the cached result.
    */
   @Post('idempotent')

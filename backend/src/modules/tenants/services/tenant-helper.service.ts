@@ -26,23 +26,24 @@ export class TenantHelperService {
   sanitizeStringInputs<T>(dto: T): T {
     if (!dto || typeof dto !== 'object') return dto;
 
-    const sanitized = { ...dto } as any;
+    // Create a safe copy with the same type
+    const sanitized = { ...dto } as Record<string, unknown>;
 
     // Loop through all properties of the object
-    Object.keys(sanitized).forEach((key) => {
+    Object.keys(sanitized).forEach((key: string) => {
       const value = sanitized[key];
 
       // Trim string values
       if (typeof value === 'string') {
         sanitized[key] = value.trim();
-      } 
+      }
       // Recursively sanitize nested objects, but not arrays or null values
       else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-        sanitized[key] = this.sanitizeStringInputs(value);
+        sanitized[key] = this.sanitizeStringInputs(value as Record<string, unknown>);
       }
     });
 
-    return sanitized as T;
+    return sanitized as unknown as T;
   }
 
   /**
@@ -52,12 +53,7 @@ export class TenantHelperService {
    */
   isPostgresUniqueViolationError(error: unknown): boolean {
     return (
-      error !== null && 
-      typeof error === 'object' && 
-      'code' in error && 
-      typeof error.code === 'string' && 
-      error.code === '23505' && 
-      'detail' in error
+      error !== null && typeof error === 'object' && 'code' in error && typeof error.code === 'string' && error.code === '23505' && 'detail' in error
     );
   }
 
@@ -67,12 +63,7 @@ export class TenantHelperService {
    * @returns The error detail string
    */
   getErrorDetail(error: unknown): string {
-    if (
-      error !== null && 
-      typeof error === 'object' && 
-      'detail' in error && 
-      typeof error.detail === 'string'
-    ) {
+    if (error !== null && typeof error === 'object' && 'detail' in error && typeof error.detail === 'string') {
       return error.detail;
     }
     return '';
@@ -97,14 +88,14 @@ export class TenantHelperService {
    * @returns Whether the transition is valid
    */
   isValidStatusTransition(currentStatus: TenantStatus, newStatus: TenantStatus): boolean {
-    // Define valid transitions map
+    // Define valid transitions map based on existing TenantStatus enum values
     const validTransitions: Record<TenantStatus, TenantStatus[]> = {
-      [TenantStatus.PENDING]: [TenantStatus.ACTIVE, TenantStatus.SUSPENDED, TenantStatus.INACTIVE],
-      [TenantStatus.ACTIVE]: [TenantStatus.SUSPENDED, TenantStatus.INACTIVE],
-      [TenantStatus.SUSPENDED]: [TenantStatus.ACTIVE, TenantStatus.INACTIVE],
-      [TenantStatus.INACTIVE]: [TenantStatus.ACTIVE],
+      [TenantStatus.PENDING]: [TenantStatus.ACTIVE, TenantStatus.SUSPENDED, TenantStatus.TERMINATED],
+      [TenantStatus.ACTIVE]: [TenantStatus.SUSPENDED, TenantStatus.TERMINATED],
+      [TenantStatus.SUSPENDED]: [TenantStatus.ACTIVE, TenantStatus.TERMINATED],
+      [TenantStatus.TERMINATED]: [], // Cannot transition from TERMINATED status
     };
-    
+
     // Check if the transition is valid
     return validTransitions[currentStatus]?.includes(newStatus) || false;
   }
@@ -115,27 +106,14 @@ export class TenantHelperService {
    * @param newStatus - Target verification status
    * @returns Whether the transition is valid
    */
-  isValidVerificationStatusTransition(
-    currentStatus: VerificationStatus, 
-    newStatus: VerificationStatus
-  ): boolean {
-    // Define valid transitions map
+  isValidVerificationStatusTransition(currentStatus: VerificationStatus, newStatus: VerificationStatus): boolean {
+    // Define valid transitions map based on existing VerificationStatus enum values
     const validTransitions: Record<VerificationStatus, VerificationStatus[]> = {
-      [VerificationStatus.PENDING]: [
-        VerificationStatus.VERIFIED, 
-        VerificationStatus.REJECTED, 
-        VerificationStatus.INCOMPLETE
-      ],
-      [VerificationStatus.INCOMPLETE]: [
-        VerificationStatus.PENDING, 
-        VerificationStatus.VERIFIED, 
-        VerificationStatus.REJECTED
-      ],
-      [VerificationStatus.VERIFIED]: [VerificationStatus.SUSPENDED],
-      [VerificationStatus.REJECTED]: [VerificationStatus.PENDING],
-      [VerificationStatus.SUSPENDED]: [VerificationStatus.VERIFIED, VerificationStatus.REJECTED],
+      [VerificationStatus.PENDING]: [VerificationStatus.VERIFIED, VerificationStatus.REJECTED],
+      [VerificationStatus.VERIFIED]: [VerificationStatus.REJECTED], // Can revert from verified to rejected
+      [VerificationStatus.REJECTED]: [VerificationStatus.PENDING], // Can retry verification after rejection
     };
-    
+
     // Check if the transition is valid
     return validTransitions[currentStatus]?.includes(newStatus) || false;
   }
@@ -148,20 +126,24 @@ export class TenantHelperService {
    */
   initializeTenantFromDto(tenant: Tenant, dto: CreateTenantDto | UpdateTenantDto): Tenant {
     // Extract embedded entity fields from the DTO
-    const { 
-      businessType, 
-      businessScale, 
-      industry,
-      gstNumber, 
-      panNumber, 
-      primaryEmail,
-      ...restOfDto 
-    } = dto as any; // Type assertion needed for extraction
+    // Use a type for the extraction to avoid 'any'
+    type TenantDtoFields = {
+      businessType?: BusinessType;
+      businessScale?: BusinessScale;
+      industry?: string;
+      gstNumber?: string;
+      panNumber?: string;
+      primaryEmail?: string;
+      subdomain?: string;
+      [key: string]: unknown;
+    };
+
+    const { businessType, businessScale, industry, gstNumber, panNumber, primaryEmail, ...restOfDto } = dto as TenantDtoFields;
 
     // Set basic properties
     Object.assign(tenant, {
       ...restOfDto,
-      subdomain: restOfDto.subdomain?.toLowerCase(),
+      subdomain: typeof restOfDto.subdomain === 'string' ? restOfDto.subdomain.toLowerCase() : restOfDto.subdomain,
       tenantId: null, // Explicitly set to null since a tenant doesn't belong to another tenant
     });
 
@@ -202,19 +184,19 @@ export class TenantHelperService {
    */
   prepareTenantForCreation(dto: CreateTenantDto): Tenant {
     const tenant = new Tenant();
-    
+
     // Initialize with data from DTO
     this.initializeTenantFromDto(tenant, dto);
-    
+
     // Set default values for new tenants
     tenant.status = TenantStatus.PENDING;
     tenant.isActive = true;
-    
+
     // Initialize verification info
     tenant.verification = new VerificationInfo();
     tenant.verification.verificationStatus = VerificationStatus.PENDING;
     tenant.verification.verificationAttempted = false;
-    
+
     return tenant;
   }
 
@@ -241,11 +223,7 @@ export class TenantHelperService {
    * @param contacts - Related contact information
    * @returns Formatted tenant data with relationships
    */
-  prepareResponseData(
-    tenant: Tenant, 
-    addresses: Address[] = [], 
-    contacts: ContactInfo[] = []
-  ): TenantWithRelations {
+  prepareResponseData(tenant: Tenant, addresses: Address[] = [], contacts: ContactInfo[] = []): TenantWithRelations {
     return {
       id: tenant.id,
       createdAt: tenant.createdAt,

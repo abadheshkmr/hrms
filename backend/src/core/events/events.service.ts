@@ -13,7 +13,7 @@ export class EventsService {
       {
         tenant: tenantData,
         timestamp: new Date().toISOString(),
-      },
+      }
     );
   }
 
@@ -24,7 +24,7 @@ export class EventsService {
       {
         tenant: tenantData,
         timestamp: new Date().toISOString(),
-      },
+      }
     );
   }
 
@@ -35,7 +35,37 @@ export class EventsService {
       {
         tenantId,
         timestamp: new Date().toISOString(),
-      },
+      }
+    );
+  }
+
+  /**
+   * Publish event when a tenant has been provisioned
+   * @param tenantData - Data about the provisioned tenant
+   */
+  async publishTenantProvisioned(tenantData: TenantData): Promise<void> {
+    await this.amqpConnection.publish(
+      'hrms-events', // exchange
+      'tenant.provisioned', // routing key
+      {
+        tenant: tenantData,
+        timestamp: new Date().toISOString(),
+      }
+    );
+  }
+
+  /**
+   * Publish event when a tenant has been deprovisioned
+   * @param tenantData - Data about the deprovisioned tenant
+   */
+  async publishTenantDeprovisioned(tenantData: TenantData): Promise<void> {
+    await this.amqpConnection.publish(
+      'hrms-events', // exchange
+      'tenant.deprovisioned', // routing key
+      {
+        tenant: tenantData,
+        timestamp: new Date().toISOString(),
+      }
     );
   }
 }

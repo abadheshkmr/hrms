@@ -10,11 +10,23 @@ import { ContactInfo } from '../../common/entities/contact-info.entity';
 import { TenantRepository } from './repositories/tenant.repository';
 import { TenantContextService } from './services/tenant-context.service';
 import { TenantMiddleware } from './middleware/tenant.middleware';
+import { TenantHelperService } from './services/tenant-helper.service';
+import { TenantMetricsService } from './services/tenant-metrics.service';
+import { TenantTransactionService } from './services/tenant-transaction.service';
+import { TenantLifecycleService } from './services/tenant-lifecycle.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Tenant, Address, ContactInfo]), EventsModule, CommonModule],
   controllers: [TenantsController],
-  providers: [TenantsService, TenantRepository, TenantContextService],
+  providers: [
+    TenantsService,
+    TenantHelperService,
+    TenantMetricsService,
+    TenantTransactionService,
+    TenantLifecycleService,
+    TenantRepository,
+    TenantContextService,
+  ],
   exports: [TenantsService, TenantContextService],
 })
 export class TenantsModule implements NestModule {

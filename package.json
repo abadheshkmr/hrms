@@ -2,6 +2,8 @@
   "dependencies": {
     "@golevelup/nestjs-rabbitmq": "^5.7.0",
     "@nestjs/microservices": "^11.0.12",
-    "amqplib": "^0.10.5"
+    "amqplib": "^0.10.5",
+    "cache-manager": "^6.4.1",
+    "cache-manager-redis-store": "^3.0.1"
   }
 }

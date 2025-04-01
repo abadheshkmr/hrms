@@ -12,24 +12,24 @@ curl -X POST http://localhost:3000/tenants \
     \"subdomain\": \"testcompany-$UNIQUE_ID\",
     \"legalName\": \"Test Company LLC $UNIQUE_ID\",
     \"identifier\": \"testcompany-id-$UNIQUE_ID\",
-    
+
     \"businessType\": \"SERVICE\",
     \"businessScale\": \"MEDIUM\",
     \"description\": \"A comprehensive test company providing various services in the technology sector.\",
     \"foundedDate\": \"2010-05-15\",
     \"employeeCount\": 250,
-    
+
     \"gstNumber\": \"GST123456789\",
-    \"panNumber\": \"PAN123456789\",
-    \"tanNumber\": \"TAN987654321\",
+    \"panNumber\": \"ABCDE1234F\",
+    \"tanNumber\": \"BNZS99999J\",
     \"msmeNumber\": \"UDYAM-XX-XX-0000123\",
-    
+
     \"website\": \"https://www.testcompany-$UNIQUE_ID.com\",
     \"primaryEmail\": \"contact$UNIQUE_ID@testcompany.com\",
     \"primaryPhone\": \"+91-9876543210\",
-    
+
     \"isActive\": true,
-    
+
     \"addresses\": [
       {
         \"addressType\": \"REGISTERED\",
@@ -52,7 +52,7 @@ curl -X POST http://localhost:3000/tenants \
         \"isPrimary\": false
       }
     ],
-    
+
     \"contactInfo\": [
       {
         \"contactType\": \"PRIMARY\",

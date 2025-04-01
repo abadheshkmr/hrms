@@ -1,20 +1,12 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Patch,
-  Delete,
-  HttpCode,
-  HttpStatus,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, HttpCode, HttpStatus, Query, Headers, BadRequestException } from '@nestjs/common';
 import { TenantsService } from '../services/tenants.service';
+import { TenantMetricsService } from '../services/tenant-metrics.service';
 import { Tenant } from '../entities/tenant.entity';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { UpdateTenantDto } from '../dto/update-tenant.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { UpdateTenantStatusDto } from '../dto/update-tenant-status.dto';
+import { TenantMetricsDto, TenantConfigurationDto } from '../dto/tenant-metrics.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery, ApiHeader } from '@nestjs/swagger';
 import { PaginationOptions, PaginatedResult } from '../../../common/types/pagination.types';
 import { Address } from '../../../common/entities/address.entity';
 import { ContactInfo } from '../../../common/entities/contact-info.entity';
@@ -25,7 +17,10 @@ import { TenantStatus, VerificationStatus } from '../enums/tenant.enums';
 @ApiTags('tenants')
 @Controller('tenants')
 export class TenantsController {
-  constructor(private readonly tenantsService: TenantsService) {}
+  constructor(
+    private readonly tenantsService: TenantsService,
+    private readonly metricsService: TenantMetricsService
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -63,10 +58,7 @@ export class TenantsController {
       },
     },
   })
-  findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<PaginatedResult<Tenant>> {
+  findAll(@Query('page') page?: number, @Query('limit') limit?: number): Promise<PaginatedResult<Tenant>> {
     const paginationOptions: PaginationOptions = {};
 
     if (page) {
@@ -123,6 +115,38 @@ export class TenantsController {
   @ApiResponse({ status: 409, description: 'Conflict - tenant name or subdomain already exists' })
   create(@Body() createTenantDto: CreateTenantDto): Promise<Tenant> {
     return this.tenantsService.create(createTenantDto);
+  }
+
+  /**
+   * Idempotent tenant creation endpoint
+   * This endpoint allows for safe retries of tenant creation without risking duplicates.
+   *
+   * Use cases:
+   * 1. Multi-step tenant onboarding flows where network issues might occur
+   * 2. Integration with payment processing systems that use idempotency
+   * 3. Third-party API clients that need reliable retry mechanisms
+   * 4. Data migration and import tools that need to safely resume operations
+   *
+   * The client must provide a unique Idempotency-Key in the header.
+   * If the same key is used multiple times, only the first request will create
+   * a tenant; subsequent requests will return the cached result.
+   */
+  @Post('idempotent')
+  @ApiOperation({ summary: 'Create tenant with idempotency', description: 'Creates a new tenant with idempotency support' })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    description: 'Unique client-generated key for idempotent operations',
+    required: true,
+  })
+  @ApiBody({ type: CreateTenantDto, description: 'Tenant data to create' })
+  @ApiResponse({ status: 201, description: 'Tenant successfully created', type: Tenant })
+  @ApiResponse({ status: 400, description: 'Bad request - missing idempotency key or validation errors' })
+  @ApiResponse({ status: 409, description: 'Conflict - tenant name or subdomain already exists' })
+  async createWithIdempotency(@Body() createTenantDto: CreateTenantDto, @Headers('Idempotency-Key') idempotencyKey: string): Promise<Tenant> {
+    if (!idempotencyKey) {
+      throw new BadRequestException('Idempotency-Key header is required');
+    }
+    return this.tenantsService.createWithIdempotency(createTenantDto, idempotencyKey);
   }
 
   @Patch(':id')
@@ -241,10 +265,7 @@ export class TenantsController {
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation errors' })
   @ApiResponse({ status: 404, description: 'Tenant not found' })
-  addContactInfo(
-    @Param('id') id: string,
-    @Body() contactInfoDto: ContactInfoDto,
-  ): Promise<ContactInfo> {
+  addContactInfo(@Param('id') id: string, @Body() contactInfoDto: ContactInfoDto): Promise<ContactInfo> {
     return this.tenantsService.addContactInfoToTenant(id, contactInfoDto);
   }
 
@@ -286,10 +307,7 @@ export class TenantsController {
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation errors' })
   @ApiResponse({ status: 404, description: 'Contact information not found' })
-  updateContactInfo(
-    @Param('id') id: string,
-    @Body() contactInfoDto: ContactInfoDto,
-  ): Promise<ContactInfo> {
+  updateContactInfo(@Param('id') id: string, @Body() contactInfoDto: ContactInfoDto): Promise<ContactInfo> {
     return this.tenantsService.updateContactInfo(id, contactInfoDto);
   }
 
@@ -356,7 +374,7 @@ export class TenantsController {
   findByStatus(
     @Param('status') status: TenantStatus,
     @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ): Promise<PaginatedResult<Tenant>> {
     const paginationOptions: PaginationOptions = {};
 
@@ -416,7 +434,7 @@ export class TenantsController {
   findByVerificationStatus(
     @Param('status') status: VerificationStatus,
     @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ): Promise<PaginatedResult<Tenant>> {
     const paginationOptions: PaginationOptions = {};
 
@@ -473,11 +491,7 @@ export class TenantsController {
       },
     },
   })
-  searchByName(
-    @Query('name') name: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<PaginatedResult<Tenant>> {
+  searchByName(@Query('name') name: string, @Query('page') page?: number, @Query('limit') limit?: number): Promise<PaginatedResult<Tenant>> {
     const paginationOptions: PaginationOptions = {};
 
     if (page) {
@@ -489,6 +503,124 @@ export class TenantsController {
     }
 
     return this.tenantsService.searchByName(name, paginationOptions);
+  }
+
+  @Get(':id/metrics')
+  @ApiOperation({
+    summary: 'Get tenant metrics',
+    description: 'Retrieves metrics data for a specific tenant',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiResponse({ status: 200, description: 'Returns the tenant metrics', type: TenantMetricsDto })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  async getTenantMetrics(@Param('id') id: string): Promise<TenantMetricsDto> {
+    // First ensure tenant exists and user has access
+    await this.tenantsService.findById(id);
+
+    return this.metricsService.getTenantMetrics(id);
+  }
+
+  @Post(':id/configuration')
+  @ApiOperation({
+    summary: 'Set tenant configuration',
+    description: 'Sets configuration values for a specific tenant',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiBody({
+    type: [TenantConfigurationDto],
+    description: 'Array of configuration key-value pairs',
+  })
+  @ApiResponse({ status: 200, description: 'Configuration values successfully set' })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  async setTenantConfiguration(@Param('id') id: string, @Body() configs: TenantConfigurationDto[]): Promise<void> {
+    // First ensure tenant exists and user has access
+    await this.tenantsService.findById(id);
+
+    this.metricsService.setTenantConfigurations(id, configs);
+  }
+
+  @Get(':id/configuration')
+  @ApiOperation({
+    summary: 'Get tenant configuration',
+    description: 'Retrieves all configuration values for a specific tenant',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the tenant configuration values',
+    schema: {
+      type: 'object',
+      additionalProperties: { type: 'string' },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  async getTenantConfiguration(@Param('id') id: string): Promise<Record<string, string>> {
+    // First ensure tenant exists and user has access
+    await this.tenantsService.findById(id);
+
+    return this.metricsService.getAllTenantConfigurations(id);
+  }
+
+  @Post(':id/activate')
+  @ApiOperation({
+    summary: 'Activate tenant',
+    description: 'Activates a tenant and runs the provisioning workflow',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiResponse({ status: 200, description: 'Tenant successfully activated', type: Tenant })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  async activateTenant(@Param('id') id: string): Promise<Tenant> {
+    return this.tenantsService.activateTenant(id);
+  }
+
+  @Post(':id/deactivate')
+  @ApiOperation({
+    summary: 'Deactivate tenant',
+    description: 'Deactivates a tenant and runs the deprovisioning workflow',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiResponse({ status: 200, description: 'Tenant successfully deactivated', type: Tenant })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  async deactivateTenant(@Param('id') id: string): Promise<Tenant> {
+    return this.tenantsService.deactivateTenant(id);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Update tenant status',
+    description: 'Updates the status of a tenant and records audit information',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the tenant',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  })
+  @ApiBody({ type: UpdateTenantStatusDto })
+  @ApiResponse({ status: 200, description: 'Status updated successfully', type: Tenant })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  @ApiResponse({ status: 400, description: 'Invalid status transition' })
+  async updateStatus(@Param('id') id: string, @Body() updateStatusDto: UpdateTenantStatusDto): Promise<Tenant> {
+    return await this.tenantsService.updateStatus(id, updateStatusDto);
   }
 
   @Get('advanced-search')
@@ -542,7 +674,7 @@ export class TenantsController {
     @Query('status') status?: TenantStatus,
     @Query('verificationStatus') verificationStatus?: VerificationStatus,
     @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ): Promise<PaginatedResult<Tenant>> {
     // Define a properly typed search criteria object to avoid unsafe member access
     const searchCriteria: Partial<{
